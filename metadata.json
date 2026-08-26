@@ -1,0 +1,6 @@
+{
+  "name": "Finalyzed",
+  "description": "Professional academic project-support marketplace and project-management platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
