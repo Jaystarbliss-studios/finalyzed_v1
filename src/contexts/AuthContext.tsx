@@ -3,20 +3,39 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
-interface UserData {
-  role?: string;
+export type FinalyzedRole = 'student' | 'specialist' | 'editor' | 'admin';
+export type AccountStatus = 'NEW' | 'ONBOARDING' | 'ACTIVE' | 'PENDING_REVIEW' | 'VERIFIED' | 'SUSPENDED' | 'REJECTED' | 'DEACTIVATED';
+
+export interface UserData {
+  role?: FinalyzedRole;
+  capabilities?: FinalyzedRole[];
+  status?: AccountStatus;
+  onboardingComplete?: boolean;
   name?: string;
   email?: string;
-  [key: string]: any;
+  photoURL?: string;
+  phone?: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  studentProfile?: Record<string, unknown>;
+  specialistProfile?: Record<string, unknown>;
+  editorProfile?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 interface AuthContextType {
   user: User | null;
   userData: UserData | null;
   loading: boolean;
+  refreshUserData: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, userData: null, loading: true });
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  userData: null,
+  loading: true,
+  refreshUserData: async () => undefined,
+});
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -25,25 +44,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUserData = async () => {
+    if (!auth.currentUser) {
+      setUserData(null);
+      return;
+    }
+
+    try {
+      const snapshot = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      setUserData(snapshot.exists() ? (snapshot.data() as UserData) : null);
+    } catch (error) {
+      console.error('Error fetching Finalyzed user profile:', error);
+      setUserData(null);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setLoading(true);
       setUser(currentUser);
+
       if (currentUser) {
-        try {
-          const docRef = doc(db, 'users', currentUser.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setUserData(docSnap.data() as UserData);
-          } else {
-            setUserData(null);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          setUserData(null);
-        }
+        await refreshUserData();
       } else {
         setUserData(null);
       }
+
       setLoading(false);
     });
 
@@ -51,8 +77,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, userData, loading }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, userData, loading, refreshUserData }}>
+      {children}
     </AuthContext.Provider>
   );
 };
