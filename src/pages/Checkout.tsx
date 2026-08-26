@@ -7,28 +7,9 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { usePaystackPayment } from 'react-paystack';
 
 const plans = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: 35000,
-    icon: <CheckCircle className="w-6 h-6 text-slate-400" />,
-    features: ['Up to 62 pages', 'PDF & DOCX output', '3 revisions'],
-  },
-  {
-    id: 'standard',
-    name: 'Standard',
-    price: 55000,
-    icon: <Star className="w-6 h-6 text-yellow-400" />,
-    features: ['Up to 75 pages', 'PDF & DOCX output', '5 revisions', 'Project presentation slides'],
-    popular: true,
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    price: 85000,
-    icon: <Award className="w-6 h-6 text-primary" />,
-    features: ['100–150 pages', 'PDF & DOCX output', '10 revisions', 'Project presentation slides', 'Simplified project presentation guide'],
-  },
+  { id: 'basic', name: 'Basic', price: 35000, icon: <CheckCircle className="w-6 h-6 text-slate-400" />, features: ['Up to 62 pages', 'PDF & DOCX output', '3 revisions'] },
+  { id: 'standard', name: 'Standard', price: 55000, icon: <Star className="w-6 h-6 text-yellow-500" />, features: ['Up to 75 pages', 'PDF & DOCX output', '5 revisions', 'Project presentation slides'], popular: true },
+  { id: 'premium', name: 'Premium', price: 85000, icon: <Award className="w-6 h-6 text-primary" />, features: ['100–150 pages', 'PDF & DOCX output', '10 revisions', 'Project presentation slides', 'Simplified project presentation guide'] },
 ];
 
 export default function Checkout() {
@@ -37,235 +18,124 @@ export default function Checkout() {
   const [spec, setSpec] = useState<any>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
-  
   const specialistId = localStorage.getItem('finalyzed_selected_specialist') || 'unassigned';
 
   useEffect(() => {
-    const savedSpec = localStorage.getItem('finalyzed_project_confirmed');
-    if (savedSpec) {
-      setSpec(JSON.parse(savedSpec));
-    } else {
-      navigate('/start-project');
+    try {
+      const savedSpec = localStorage.getItem('finalyzed_project_confirmed');
+      if (savedSpec) setSpec(JSON.parse(savedSpec));
+      else navigate('/start-project', { replace: true });
+    } catch {
+      navigate('/start-project', { replace: true });
     }
   }, [navigate]);
 
-  const planDetails = plans.find(p => p.id === selectedPlan);
-  const baseAmount = planDetails?.price || 0;
-  const totalAmount = baseAmount * 1.025; // 2.5% fee
-  
-  // Paystack Configuration
+  const planDetails = plans.find(p => p.id === selectedPlan)!;
+  const baseAmount = planDetails.price;
+  // Do not silently add a gateway/service surcharge. Any platform fee should be an
+  // explicit, administrator-configured line item in the future.
+  const totalAmount = baseAmount;
+
   const config = {
-    reference: (new Date()).getTime().toString(),
-    email: user?.email || 'student@example.com',
-    amount: totalAmount * 100, // in kobo
-    publicKey: (import.meta as any).env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder', // MUST BE PROVIDED IN .env
+    reference: `FZ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    email: user?.email || '',
+    amount: totalAmount * 100,
+    publicKey: (import.meta as any).env.VITE_PAYSTACK_PUBLIC_KEY || '',
   };
 
   const initializePayment = usePaystackPayment(config);
 
   const onSuccess = async (reference: any, projectId: string) => {
     try {
-      // Hit our secure backend to verify and fulfill
+      if (!user) throw new Error('Authentication required');
+      const idToken = await user.getIdToken();
       const response = await fetch('/api/paystack/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reference: reference.reference,
-          projectId,
-          userId: user?.uid
-        })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ reference: reference.reference, projectId }),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Payment verification failed');
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Payment verification failed');
       }
 
-      // Clear local storage drafts
       localStorage.removeItem('finalyzed_project_draft');
       localStorage.removeItem('finalyzed_project_confirmed');
       localStorage.removeItem('finalyzed_selected_specialist');
-      
-      // Redirect to dashboard with success state
-      navigate('/dashboard', { state: { paymentSuccess: true } });
+      navigate('/dashboard', { replace: true, state: { paymentSuccess: true } });
     } catch (error) {
       console.error('Error verifying payment:', error);
-      alert("Payment was successful but we couldn't verify it. Please contact support.");
+      alert(error instanceof Error ? error.message : 'Payment verification failed. Please contact Finalyzed support.');
       setProcessing(false);
     }
-  };
-
-  const onClose = () => {
-    console.log('Payment closed');
-    setProcessing(false);
   };
 
   const handlePayment = async () => {
-    if (!user) {
-      navigate('/login');
+    if (!user) return navigate('/login');
+    if (!spec?.projectTitle) return navigate('/start-project');
+    if (!config.publicKey) {
+      alert('Paystack is not configured yet. Please add VITE_PAYSTACK_PUBLIC_KEY to the environment.');
       return;
     }
-    
+
     setProcessing(true);
-    
     try {
-      // 1. Create project in Firestore (State Machine: PAYMENT_PENDING)
       const docRef = await addDoc(collection(db, 'projects'), {
         studentId: user.uid,
-        specialistId: specialistId,
-        title: spec.projectTitle || 'Untitled Project',
+        specialistId,
+        title: spec.projectTitle,
         type: spec.projectType || 'Standard Academic Project',
         plan: selectedPlan,
-        baseAmount: baseAmount,
-        totalAmount: totalAmount,
-        status: 'PAYMENT_PENDING', 
+        baseAmount,
+        totalAmount,
+        revisionLimit: planDetails.id === 'basic' ? 3 : planDetails.id === 'standard' ? 5 : 10,
         specification: spec,
+        status: 'PAYMENT_PENDING',
         createdAt: serverTimestamp(),
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       });
-      
-      // 2. Trigger Paystack
+
       initializePayment({
         onSuccess: (ref) => onSuccess(ref, docRef.id),
-        onClose: onClose
+        onClose: () => setProcessing(false),
       });
-      
     } catch (error) {
       console.error('Error initiating checkout:', error);
       setProcessing(false);
+      alert('We could not start checkout. Please try again.');
     }
   };
 
-  if (!spec) return <div className="p-8 text-center">Loading specification...</div>;
+  if (!spec) return <div className="p-8 text-center text-muted-foreground">Loading your confirmed project specification…</div>;
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8 md:py-12">
-      <div className="text-center mb-8 md:mb-12">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Finalize Your Commission</h1>
-        <p className="text-muted-foreground mt-2 text-sm md:text-base">Select your plan and complete payment securely.</p>
-      </div>
-
+      <div className="text-center mb-8 md:mb-12"><p className="text-xs uppercase tracking-[0.2em] font-bold text-primary">Secure checkout</p><h1 className="text-2xl md:text-3xl font-bold tracking-tight mt-2">Finalize Your Commission</h1><p className="text-muted-foreground mt-2">Your confirmed project specification is attached to this order.</p></div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          {/* Plan Selection */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Zap className="w-5 h-5 text-primary" /> Select Plan
-            </h2>
+          <div className="space-y-4"><h2 className="text-xl font-bold flex items-center gap-2"><Zap className="w-5 h-5 text-primary" /> Select Plan</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {plans.map((plan) => (
-                <button
-                  key={plan.id}
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className={`relative flex flex-col p-6 rounded-xl text-left transition-all border-2 ${
-                    selectedPlan === plan.id
-                      ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
-                      : 'border-border bg-background hover:border-primary/50'
-                  }`}
-                >
-                  {plan.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-full">
-                      Most Popular
-                    </span>
-                  )}
-                  <div className="flex justify-between items-start mb-4">
-                    {plan.icon}
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      selectedPlan === plan.id ? 'border-primary' : 'border-muted'
-                    }`}>
-                      {selectedPlan === plan.id && <div className="w-2.5 h-2.5 bg-primary rounded-full" />}
-                    </div>
-                  </div>
-                  <h3 className="font-bold text-lg">{plan.name}</h3>
-                  <div className="text-2xl font-bold text-foreground mt-1 mb-4">₦{plan.price.toLocaleString()}</div>
-                  <ul className="space-y-2 mt-auto">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </button>
-              ))}
+              {plans.map(plan => <button key={plan.id} onClick={() => setSelectedPlan(plan.id)} className={`relative flex flex-col p-6 rounded-2xl text-left transition-all border-2 ${selectedPlan === plan.id ? 'border-primary bg-primary/5 shadow-md shadow-primary/10' : 'border-border bg-background hover:border-primary/40'}`}>
+                {plan.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-full">Most Popular</span>}
+                <div className="flex justify-between items-start mb-4">{plan.icon}<span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === plan.id ? 'border-primary' : 'border-muted'}`}>{selectedPlan === plan.id && <span className="w-2.5 h-2.5 bg-primary rounded-full" />}</span></div>
+                <h3 className="font-bold text-lg">{plan.name}</h3><div className="text-2xl font-bold mt-1 mb-4">₦{plan.price.toLocaleString()}</div>
+                <ul className="space-y-2 mt-auto">{plan.features.map(feature => <li key={feature} className="flex items-start gap-2 text-sm text-muted-foreground"><CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />{feature}</li>)}</ul>
+              </button>)}
             </div>
           </div>
-
-          {/* Project Summary */}
-          <div className="bento-card p-6 border-border">
-            <h2 className="text-xl font-bold mb-4">Project Summary</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
-              <div>
-                <span className="text-muted-foreground block text-xs uppercase tracking-wider font-bold">Title</span>
-                <span className="font-medium">{spec.projectTitle || 'Untitled'}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-xs uppercase tracking-wider font-bold">Type</span>
-                <span className="font-medium">{spec.projectType || 'Standard'}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-xs uppercase tracking-wider font-bold">Target Pages</span>
-                <span className="font-medium">{spec.targetPages || 'Not specified'}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-xs uppercase tracking-wider font-bold">Specialist</span>
-                <span className="font-medium">{specialistId === 'unassigned' ? 'To be assigned automatically' : 'Pre-selected Specialist'}</span>
-              </div>
-            </div>
-          </div>
+          <div className="bento-card p-6"><h2 className="text-xl font-bold mb-5">Project Summary</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8 text-sm">
+            <Summary label="Title" value={spec.projectTitle || 'Untitled'} /><Summary label="Type" value={spec.projectType || 'Standard'} /><Summary label="Target pages" value={spec.targetPages || 'Not specified'} /><Summary label="Specialist" value={specialistId === 'unassigned' ? 'Not pre-selected' : 'Selected specialist'} />
+          </div></div>
         </div>
-
-        {/* Checkout Sidebar */}
-        <div className="lg:col-span-1">
-          <div className="bento-card p-6 border-primary/20 sticky top-24 bg-background shadow-lg shadow-black/5">
-            <h2 className="text-xl font-bold mb-6">Order Details</h2>
-            
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Plan</span>
-                <span className="font-medium capitalize">{selectedPlan}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Service Fee (2.5%)</span>
-                <span className="font-medium">₦{(baseAmount * 0.025).toLocaleString()}</span>
-              </div>
-              <div className="pt-4 border-t border-border flex justify-between">
-                <span className="font-bold">Total Paystack Amount</span>
-                <span className="font-bold text-xl text-primary">
-                  ₦{totalAmount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Shield className="w-4 h-4 text-green-500" />
-                <span>Your funds are held securely until editor approval.</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Lock className="w-4 h-4 text-green-500" />
-                <span>Encrypted 256-bit payment processing via Paystack.</span>
-              </div>
-            </div>
-
-            <button 
-              onClick={handlePayment}
-              disabled={processing}
-              className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {processing ? (
-                <>Processing...</>
-              ) : (
-                <>
-                  <CreditCard className="w-5 h-5" /> Pay Now
-                </>
-              )}
-            </button>
-            <div className="mt-4 text-center">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Secured by Paystack</span>
-            </div>
-          </div>
-        </div>
+        <div><div className="bento-card p-6 sticky top-24 bg-background shadow-lg shadow-black/5"><h2 className="text-xl font-bold mb-6">Order Details</h2>
+          <div className="space-y-4 mb-6"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Plan</span><span className="font-medium capitalize">{selectedPlan}</span></div><div className="pt-4 border-t border-border flex justify-between"><span className="font-bold">Total</span><span className="font-bold text-xl text-primary">₦{totalAmount.toLocaleString()}</span></div></div>
+          <div className="space-y-3 mb-6"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Shield className="w-4 h-4 text-green-500" /> <span>Payment is verified server-side before the project advances.</span></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="w-4 h-4 text-green-500" /> <span>Secure payment processing via Paystack.</span></div></div>
+          <button onClick={handlePayment} disabled={processing} className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50">{processing ? 'Processing…' : <><CreditCard className="w-5 h-5" /> Pay ₦{totalAmount.toLocaleString()}</>}</button>
+          <div className="mt-4 text-center"><span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Secured by Paystack</span></div>
+        </div></div>
       </div>
     </div>
   );
 }
+
+function Summary({ label, value }: { label: string; value: string }) { return <div><span className="text-muted-foreground block text-xs uppercase tracking-wider font-bold">{label}</span><span className="font-medium break-words">{value}</span></div>; }
