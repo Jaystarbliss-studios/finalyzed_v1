@@ -1,174 +1,62 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'johnrufai242@gmail.com' ||
-        request.auth.token.email == 'rufaijohnny@gmail.com'
-      );
+      return isSignedIn() && (request.auth.token.email == 'johnrufai242@gmail.com' || request.auth.token.email == 'rufaijohnny@gmail.com');
     }
+    function isEditor() { return isSignedIn() && userDoc().data.role == 'editor' && userDoc().data.status in ['ACTIVE', 'VERIFIED']; }
+    function isWriter() { return isSignedIn() && userDoc().data.role == 'specialist' && userDoc().data.status in ['ACTIVE', 'VERIFIED']; }
 
-    function isEditor() {
-      return isSignedIn() && userDoc().data.role == 'editor' && userDoc().data.status in ['ACTIVE', 'VERIFIED'];
-    }
-
-    function isWriter() {
-      return isSignedIn() && userDoc().data.role == 'specialist' && userDoc().data.status in ['ACTIVE', 'VERIFIED'];
-    }
-
-    // User documents contain private profile information. Never make them globally readable.
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-
-      // New clients may create only a basic student account or a pending application shell.
-      // Privileged capabilities must be granted by an administrator.
-      allow create: if isOwner(userId)
-        && request.resource.data.role == 'student'
-        && request.resource.data.capabilities is list
-        && request.resource.data.capabilities.size() <= 1;
-
-      allow update: if isAdmin() || (
-        isOwner(userId)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'role', 'capabilities', 'isVerified', 'status', 'pendingCapability'
-        ])
-      );
+      allow create: if isOwner(userId) && request.resource.data.role == 'student' && request.resource.data.capabilities is list && request.resource.data.capabilities.size() <= 1;
+      allow update: if isAdmin() || (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role','capabilities','isVerified','status','pendingCapability']));
     }
 
-    // Public, deliberately curated marketplace profiles. Never store private student data here.
-    match /publicProfiles/{profileId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
+    match /publicProfiles/{profileId} { allow read: if true; allow create, update, delete: if isAdmin(); }
 
-    // Writer and editor applications are private to the applicant and administrators.
     match /writerApplications/{applicationId} {
-      allow create: if isOwner(applicationId)
-        && request.resource.data.applicantId == request.auth.uid
-        && request.resource.data.status == 'PENDING_REVIEW';
-      allow read: if isOwner(applicationId) || isAdmin();
-      allow update: if isAdmin();
+      allow create: if isOwner(applicationId) && request.resource.data.applicantId == request.auth.uid && request.resource.data.status == 'PENDING_REVIEW';
+      allow read: if isOwner(applicationId) || isAdmin(); allow update: if isAdmin();
+    }
+    match /editorApplications/{applicationId} {
+      allow create: if isOwner(applicationId) && request.resource.data.applicantId == request.auth.uid && request.resource.data.status == 'PENDING_REVIEW';
+      allow read: if isOwner(applicationId) || isAdmin(); allow update: if isAdmin();
     }
 
-    match /editorApplications/{applicationId} {
-      allow create: if isOwner(applicationId)
-        && request.resource.data.applicantId == request.auth.uid
-        && request.resource.data.status == 'PENDING_REVIEW';
-      allow read: if isOwner(applicationId) || isAdmin();
-      allow update: if isAdmin();
+    // The specification is the authoritative pre-commission requirements record.
+    // Students can only read/write their own draft. A confirmed specification is still immutable from other roles.
+    match /projectSpecifications/{ownerId} {
+      allow read: if isOwner(ownerId) || isAdmin();
+      allow create: if isOwner(ownerId) && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isOwner(ownerId) && resource.data.ownerId == request.auth.uid && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isOwner(ownerId) && resource.data.status == 'DRAFT';
     }
 
     match /projects/{projectId} {
-      allow read: if isSignedIn() && (
-        resource.data.studentId == request.auth.uid ||
-        resource.data.specialistId == request.auth.uid ||
-        isEditor() ||
-        isAdmin()
-      );
-
-      allow create: if isSignedIn()
-        && request.resource.data.studentId == request.auth.uid;
-
-      allow update: if isSignedIn() && (
-        resource.data.studentId == request.auth.uid ||
-        resource.data.specialistId == request.auth.uid ||
-        isEditor() ||
-        isAdmin()
-      );
-
+      allow read: if isSignedIn() && (resource.data.studentId == request.auth.uid || resource.data.specialistId == request.auth.uid || isEditor() || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.studentId == request.auth.uid || resource.data.specialistId == request.auth.uid || isEditor() || isAdmin());
       match /messages/{messageId} {
-        allow read, create: if isSignedIn() && (
-          get(/databases/$(database)/documents/projects/$(projectId)).data.studentId == request.auth.uid ||
-          get(/databases/$(database)/documents/projects/$(projectId)).data.specialistId == request.auth.uid ||
-          isEditor() ||
-          isAdmin()
-        );
+        allow read, create: if isSignedIn() && (get(/databases/$(database)/documents/projects/$(projectId)).data.studentId == request.auth.uid || get(/databases/$(database)/documents/projects/$(projectId)).data.specialistId == request.auth.uid || isEditor() || isAdmin());
       }
     }
 
-    // These are immutable financial records. Client-side writes are prohibited.
-    match /walletTransactions/{transactionId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow write: if false;
-    }
-
-    match /pointTransactions/{transactionId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow write: if false;
-    }
-
-    match /wallets/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if false;
-    }
-
-    match /withdrawals/{withdrawalId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'REQUESTED';
-      allow update, delete: if isAdmin();
-    }
-
-    match /payments/{paymentId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow write: if false;
-    }
-
-    match /notifications/{notificationId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create, delete: if isAdmin();
-    }
-
-    match /auditLogs/{logId} {
-      allow read: if isAdmin();
-      allow write: if false;
-    }
-
-    match /disputes/{disputeId} {
-      allow read: if isSignedIn() && (
-        resource.data.studentId == request.auth.uid ||
-        resource.data.specialistId == request.auth.uid ||
-        isAdmin()
-      );
-      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
-      allow update: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
-    }
-
-    match /institutions/{institutionId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /faculties/{facultyId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /departments/{departmentId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /departmentRequirements/{requirementId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Default deny for collections not explicitly designed above.
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /walletTransactions/{transactionId} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()); allow write: if false; }
+    match /pointTransactions/{transactionId} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()); allow write: if false; }
+    match /wallets/{userId} { allow read: if isOwner(userId) || isAdmin(); allow write: if false; }
+    match /withdrawals/{withdrawalId} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()); allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'REQUESTED'; allow update, delete: if isAdmin(); }
+    match /payments/{paymentId} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()); allow write: if false; }
+    match /notifications/{notificationId} { allow read: if isSignedIn() && resource.data.userId == request.auth.uid; allow update: if isSignedIn() && resource.data.userId == request.auth.uid; allow create, delete: if isAdmin(); }
+    match /auditLogs/{logId} { allow read: if isAdmin(); allow write: if false; }
+    match /disputes/{disputeId} { allow read: if isSignedIn() && (resource.data.studentId == request.auth.uid || resource.data.specialistId == request.auth.uid || isAdmin()); allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid; allow update: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid); }
+    match /institutions/{institutionId} { allow read: if true; allow write: if isAdmin(); }
+    match /faculties/{facultyId} { allow read: if true; allow write: if isAdmin(); }
+    match /departments/{departmentId} { allow read: if true; allow write: if isAdmin(); }
+    match /departmentRequirements/{requirementId} { allow read: if true; allow write: if isAdmin(); }
+    match /{document=**} { allow read, write: if false; }
   }
 }
