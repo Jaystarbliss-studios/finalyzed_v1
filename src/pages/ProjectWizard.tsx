@@ -1,438 +1,207 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, ChevronRight, ChevronLeft, Save, AlertCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Check, ChevronRight, ChevronLeft, Save, AlertCircle, ShieldCheck, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { loadProjectSpecification, PROJECT_PLANS, saveProjectSpecification, validateSpecification } from '../lib/projectSpecifications';
 
 const WIZARD_STEPS = [
-  "Student Info",
-  "Project Identity",
-  "Institution Requirements",
-  "Formatting",
-  "Page & Length",
-  "Structure",
-  "Citation & References",
-  "Methodology",
-  "Data & Results",
-  "Appendices",
-  "Presentation",
-  "Special Instructions",
-  "Confirmation"
+  'Student Info', 'Project Identity', 'Institution Requirements', 'Formatting', 'Page & Length',
+  'Structure', 'Citation & References', 'Methodology', 'Data & Results', 'Appendices',
+  'Presentation', 'Special Instructions', 'Confirmation'
 ];
+
+const defaults = {
+  projectType: '', citationStyle: '', fontFamily: 'Times New Roman', bodyFontSize: '12',
+  headingFontSize: '12', lineSpacing: '2.0', alignment: 'Justified', marginLeft: '1.5',
+  marginTop: '1', marginRight: '1', marginBottom: '1', chapterCount: '5',
+  hasPrescribedFormat: 'Unknown', hasRealData: 'Partial', appendices: [] as string[],
+};
 
 export default function ProjectWizard() {
   const { user, userData } = useAuth();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<any>({});
-  const [isSaved, setIsSaved] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
   const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = useState<Record<string, any>>(defaults);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const specialistId = localStorage.getItem('finalyzed_selected_specialist') || '';
 
   useEffect(() => {
-    const saved = localStorage.getItem('finalyzed_project_draft');
-    if (saved) {
+    let cancelled = false;
+    async function load() {
+      if (!user) return;
       try {
-        setFormData(JSON.parse(saved));
-      } catch (e) {}
-    } else if (userData?.studentProfile) {
-      setFormData((prev: any) => ({
-        ...prev,
-        fullName: userData.name || '',
-        institution: userData.studentProfile.institution || '',
-        faculty: userData.studentProfile.faculty || '',
-        department: userData.studentProfile.department || '',
-        degree: userData.studentProfile.degree || '',
-        matricNumber: userData.studentProfile.matricNumber || '',
-      }));
+        const remote = await loadProjectSpecification(user.uid);
+        if (cancelled) return;
+        if (remote) {
+          setFormData({ ...defaults, ...remote });
+          setConfirmed(remote.status === 'CONFIRMED');
+        } else if (userData?.studentProfile) {
+          setFormData(prev => ({
+            ...prev,
+            fullName: userData.name || '',
+            email: user.email || '',
+            institution: userData.studentProfile.institution || '',
+            faculty: userData.studentProfile.faculty || '',
+            department: userData.studentProfile.department || '',
+            degree: userData.studentProfile.degree || '',
+            matricNumber: userData.studentProfile.matricNumber || '',
+            supervisor: userData.studentProfile.supervisor || '',
+            hod: userData.studentProfile.hod || '',
+          }));
+        }
+      } catch (error) {
+        console.error('Unable to load project specification', error);
+        try {
+          const cached = localStorage.getItem('finalyzed_project_draft');
+          if (cached) setFormData({ ...defaults, ...JSON.parse(cached) });
+        } catch { /* ignore malformed cache */ }
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
     }
-  }, [userData]);
+    load();
+    return () => { cancelled = true; };
+  }, [user, userData]);
 
   useEffect(() => {
-    if (Object.keys(formData).length > 0) {
-      localStorage.setItem('finalyzed_project_draft', JSON.stringify(formData));
-      setIsSaved(true);
-      const timer = setTimeout(() => setIsSaved(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [formData]);
+    if (!user || !loaded || confirmed) return;
+    localStorage.setItem('finalyzed_project_draft', JSON.stringify(formData));
+    const timer = window.setTimeout(async () => {
+      try {
+        setSaving(true);
+        await saveProjectSpecification(user.uid, { ...formData, selectedSpecialistId: specialistId }, 'DRAFT');
+        setIsSaved(true);
+      } catch (error) {
+        console.error('Draft save failed', error);
+      } finally {
+        setSaving(false);
+        window.setTimeout(() => setIsSaved(false), 1800);
+      }
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [formData, user, loaded, confirmed, specialistId]);
 
-  const handleUpdate = (key: string, value: any) => {
-    setFormData((prev: any) => ({ ...prev, [key]: value }));
+  const update = (key: string, value: any) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    setErrors([]);
+  };
+
+  const validateStep = () => {
+    const requiredByStep: Record<number, Array<[string, string]>> = {
+      0: [['fullName', 'Full name'], ['matricNumber', 'Matriculation/registration number'], ['institution', 'Institution'], ['department', 'Department'], ['degree', 'Degree/award']],
+      1: [['projectTitle', 'Approved project title'], ['projectType', 'Project type']],
+      3: [['fontFamily', 'Font family'], ['lineSpacing', 'Line spacing']],
+      6: [['citationStyle', 'Citation style']],
+      7: [['methodology', 'Methodology/design approach']],
+    };
+    const missing = (requiredByStep[currentStep] || []).filter(([key]) => !String(formData[key] ?? '').trim()).map(([, label]) => `${label} is required.`);
+    setErrors(missing);
+    return missing.length === 0;
   };
 
   const nextStep = () => {
-    if (currentStep < WIZARD_STEPS.length - 1) setCurrentStep(c => c + 1);
+    if (!validateStep()) return;
+    setCurrentStep(step => Math.min(WIZARD_STEPS.length - 1, step + 1));
   };
+  const prevStep = () => setCurrentStep(step => Math.max(0, step - 1));
 
-  const prevStep = () => {
-    if (currentStep > 0) setCurrentStep(c => c - 1);
-  };
-
-  const handleConfirm = () => {
-    if (!confirmed) return;
-    localStorage.setItem('finalyzed_project_confirmed', JSON.stringify(formData));
-    navigate('/checkout');
-  };
-
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">1. Student Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input placeholder="Full Name" value={formData.fullName || ''} onChange={(e) => handleUpdate('fullName', e.target.value)} className="form-input" />
-              <input placeholder="Matriculation/Registration No." value={formData.matricNumber || ''} onChange={(e) => handleUpdate('matricNumber', e.target.value)} className="form-input" />
-              <input placeholder="Institution" value={formData.institution || ''} onChange={(e) => handleUpdate('institution', e.target.value)} className="form-input" />
-              <input placeholder="Faculty/School" value={formData.faculty || ''} onChange={(e) => handleUpdate('faculty', e.target.value)} className="form-input" />
-              <input placeholder="Department" value={formData.department || ''} onChange={(e) => handleUpdate('department', e.target.value)} className="form-input" />
-              <input placeholder="Degree/Award (e.g. B.Sc)" value={formData.degree || ''} onChange={(e) => handleUpdate('degree', e.target.value)} className="form-input" />
-              <input placeholder="Project Supervisor" value={formData.supervisor || ''} onChange={(e) => handleUpdate('supervisor', e.target.value)} className="form-input" />
-              <input placeholder="Head of Department" value={formData.hod || ''} onChange={(e) => handleUpdate('hod', e.target.value)} className="form-input" />
-              <div className="flex gap-4">
-                <input placeholder="Submission Month (e.g. August)" value={formData.submissionMonth || ''} onChange={(e) => handleUpdate('submissionMonth', e.target.value)} className="form-input w-1/2" />
-                <input placeholder="Year (e.g. 2026)" value={formData.submissionYear || ''} onChange={(e) => handleUpdate('submissionYear', e.target.value)} className="form-input w-1/2" />
-              </div>
-            </div>
-          </div>
-        );
-      case 1:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">2. Project Identity</h3>
-            <input placeholder="Exact Approved Project Title" value={formData.projectTitle || ''} onChange={(e) => handleUpdate('projectTitle', e.target.value)} className="form-input" />
-            <select value={formData.projectType || ''} onChange={(e) => handleUpdate('projectType', e.target.value)} className="form-input">
-              <option value="">Select Project Type</option>
-              <option value="Design & Construction">Design & Construction</option>
-              <option value="Research Study">Research Study</option>
-              <option value="Software Development">Software Development</option>
-              <option value="Case Study">Case Study</option>
-              <option value="Business Plan">Business Plan</option>
-              <option value="Survey-Based Study">Survey-Based Study</option>
-              <option value="Other">Other</option>
-            </select>
-            <input placeholder="Core Subject Area" value={formData.subjectArea || ''} onChange={(e) => handleUpdate('subjectArea', e.target.value)} className="form-input" />
-            <textarea placeholder="What problem is being addressed?" value={formData.problemStatement || ''} onChange={(e) => handleUpdate('problemStatement', e.target.value)} className="form-input min-h-[100px]" />
-            <textarea placeholder="Expected Outcome / Objectives" value={formData.expectedOutcome || ''} onChange={(e) => handleUpdate('expectedOutcome', e.target.value)} className="form-input min-h-[100px]" />
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={formData.topicApproved || false} onChange={(e) => handleUpdate('topicApproved', e.target.checked)} className="w-4 h-4" />
-              <span>Is this topic officially approved by your department?</span>
-            </label>
-          </div>
-        );
-      case 2:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">3. Institution Requirements</h3>
-            <select value={formData.hasPrescribedFormat || ''} onChange={(e) => handleUpdate('hasPrescribedFormat', e.target.value)} className="form-input">
-              <option value="">Does your institution have a prescribed project format?</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-              <option value="Unknown">I don't know</option>
-            </select>
-            {formData.hasPrescribedFormat === 'Yes' && (
-              <textarea placeholder="Detail the specific requirements (or you can upload documents on the dashboard later)" value={formData.prescribedFormatDetails || ''} onChange={(e) => handleUpdate('prescribedFormatDetails', e.target.value)} className="form-input min-h-[100px]" />
-            )}
-            <textarea placeholder="List required preliminary pages (e.g. Dedication, Abstract, Certification)" value={formData.preliminaryPages || ''} onChange={(e) => handleUpdate('preliminaryPages', e.target.value)} className="form-input min-h-[100px]" />
-          </div>
-        );
-      case 3:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">4. Formatting</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <select value={formData.fontFamily || ''} onChange={(e) => handleUpdate('fontFamily', e.target.value)} className="form-input">
-                <option value="">Font Family</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Arial">Arial</option>
-                <option value="Calibri">Calibri</option>
-                <option value="Institution Standard">Institution Standard</option>
-              </select>
-              <select value={formData.lineSpacing || ''} onChange={(e) => handleUpdate('lineSpacing', e.target.value)} className="form-input">
-                <option value="">Line Spacing</option>
-                <option value="1.0">1.0</option>
-                <option value="1.5">1.5</option>
-                <option value="2.0">2.0</option>
-                <option value="Institution Standard">Institution Standard</option>
-              </select>
-              <input placeholder="Body Font Size (e.g. 12pt)" value={formData.bodyFontSize || ''} onChange={(e) => handleUpdate('bodyFontSize', e.target.value)} className="form-input" />
-              <input placeholder="Heading Font Size (e.g. 14pt)" value={formData.headingFontSize || ''} onChange={(e) => handleUpdate('headingFontSize', e.target.value)} className="form-input" />
-              <select value={formData.alignment || ''} onChange={(e) => handleUpdate('alignment', e.target.value)} className="form-input">
-                <option value="">Alignment</option>
-                <option value="Justified">Justified</option>
-                <option value="Left">Left</option>
-              </select>
-              <input placeholder="Margins (e.g. Top 1, Bottom 1, Left 1.5, Right 1)" value={formData.margins || ''} onChange={(e) => handleUpdate('margins', e.target.value)} className="form-input" />
-            </div>
-          </div>
-        );
-      case 4:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">5. Page & Length</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input placeholder="Minimum Pages" type="number" value={formData.minPages || ''} onChange={(e) => handleUpdate('minPages', e.target.value)} className="form-input" />
-              <input placeholder="Target Pages" type="number" value={formData.targetPages || ''} onChange={(e) => handleUpdate('targetPages', e.target.value)} className="form-input" />
-              <input placeholder="Maximum Pages" type="number" value={formData.maxPages || ''} onChange={(e) => handleUpdate('maxPages', e.target.value)} className="form-input" />
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={formData.countPrelim || false} onChange={(e) => handleUpdate('countPrelim', e.target.checked)} className="w-4 h-4" />
-                <span>Do preliminary pages count towards total?</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={formData.countReferences || false} onChange={(e) => handleUpdate('countReferences', e.target.checked)} className="w-4 h-4" />
-                <span>Do references count towards total?</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={formData.countAppendices || false} onChange={(e) => handleUpdate('countAppendices', e.target.checked)} className="w-4 h-4" />
-                <span>Do appendices count towards total?</span>
-              </label>
-            </div>
-          </div>
-        );
-      case 5:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">6. Structure</h3>
-            <input placeholder="Total Number of Chapters" type="number" value={formData.chapterCount || ''} onChange={(e) => handleUpdate('chapterCount', e.target.value)} className="form-input" />
-            <div className="space-y-3">
-              <input placeholder="Chapter 1 Title (e.g. Introduction)" value={formData.chapter1Title || ''} onChange={(e) => handleUpdate('chapter1Title', e.target.value)} className="form-input" />
-              <input placeholder="Chapter 2 Title (e.g. Literature Review)" value={formData.chapter2Title || ''} onChange={(e) => handleUpdate('chapter2Title', e.target.value)} className="form-input" />
-              <input placeholder="Chapter 3 Title (e.g. Methodology)" value={formData.chapter3Title || ''} onChange={(e) => handleUpdate('chapter3Title', e.target.value)} className="form-input" />
-              <input placeholder="Chapter 4 Title (e.g. Implementation / Results)" value={formData.chapter4Title || ''} onChange={(e) => handleUpdate('chapter4Title', e.target.value)} className="form-input" />
-              <input placeholder="Chapter 5 Title (e.g. Conclusion and Recommendations)" value={formData.chapter5Title || ''} onChange={(e) => handleUpdate('chapter5Title', e.target.value)} className="form-input" />
-            </div>
-            <textarea placeholder="List any mandatory subsections" value={formData.mandatorySubsections || ''} onChange={(e) => handleUpdate('mandatorySubsections', e.target.value)} className="form-input min-h-[80px]" />
-          </div>
-        );
-      case 6:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">7. Citation & References</h3>
-            <select value={formData.citationStyle || ''} onChange={(e) => handleUpdate('citationStyle', e.target.value)} className="form-input">
-              <option value="">Select Citation Style</option>
-              <option value="APA">APA</option>
-              <option value="IEEE">IEEE</option>
-              <option value="Harvard">Harvard</option>
-              <option value="MLA">MLA</option>
-              <option value="Vancouver">Vancouver</option>
-              <option value="Other">Other (Specify in instructions)</option>
-            </select>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input placeholder="Minimum References" type="number" value={formData.minReferences || ''} onChange={(e) => handleUpdate('minReferences', e.target.value)} className="form-input" />
-              <input placeholder="Maximum References (if applicable)" type="number" value={formData.maxReferences || ''} onChange={(e) => handleUpdate('maxReferences', e.target.value)} className="form-input" />
-            </div>
-            <textarea placeholder="Specify any requirements regarding source types (e.g. must include 5 recent textbooks, no Wikipedia, focus on journals from 2020+)" value={formData.sourceRequirements || ''} onChange={(e) => handleUpdate('sourceRequirements', e.target.value)} className="form-input min-h-[100px]" />
-          </div>
-        );
-      case 7:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">8. Methodology</h3>
-            <p className="text-sm text-muted-foreground">Describe how the project should be executed.</p>
-            <textarea placeholder="Research Design / Architecture / Methodology details" value={formData.methodology || ''} onChange={(e) => handleUpdate('methodology', e.target.value)} className="form-input min-h-[100px]" />
-            <input placeholder="Required Technologies / Instruments" value={formData.technologies || ''} onChange={(e) => handleUpdate('technologies', e.target.value)} className="form-input" />
-            <input placeholder="Target Population / Scope" value={formData.scope || ''} onChange={(e) => handleUpdate('scope', e.target.value)} className="form-input" />
-          </div>
-        );
-      case 8:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">9. Data & Results</h3>
-            <select value={formData.hasRealData || ''} onChange={(e) => handleUpdate('hasRealData', e.target.value)} className="form-input">
-              <option value="">Do you already have real project data?</option>
-              <option value="Yes">Yes (I will upload to workspace)</option>
-              <option value="No">No (Use illustrative data)</option>
-              <option value="Partial">Partial</option>
-            </select>
-            <textarea placeholder="Describe expected results, required charts, tables, diagrams, or technical drawings." value={formData.resultRequirements || ''} onChange={(e) => handleUpdate('resultRequirements', e.target.value)} className="form-input min-h-[100px]" />
-          </div>
-        );
-      case 9:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">10. Appendices</h3>
-            <p className="text-sm text-muted-foreground">Select required appendices.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {[
-                "Questionnaire", "Interview Questions", "Test Log", 
-                "Bill of Materials", "Budget", "Code Listing", 
-                "Technical Drawings", "Financial Statements"
-              ].map((item) => (
-                <label key={item} className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    checked={formData.appendices?.includes(item) || false} 
-                    onChange={(e) => {
-                      const current = formData.appendices || [];
-                      if (e.target.checked) handleUpdate('appendices', [...current, item]);
-                      else handleUpdate('appendices', current.filter((i: string) => i !== item));
-                    }} 
-                    className="w-4 h-4" 
-                  />
-                  <span>{item}</span>
-                </label>
-              ))}
-            </div>
-            <input placeholder="Other Appendices" value={formData.otherAppendices || ''} onChange={(e) => handleUpdate('otherAppendices', e.target.value)} className="form-input" />
-          </div>
-        );
-      case 10:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">11. Presentation</h3>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={formData.presentationRequired || false} onChange={(e) => handleUpdate('presentationRequired', e.target.checked)} className="w-4 h-4" />
-              <span className="font-medium">Is a presentation required? (Available on Standard/Premium plans)</span>
-            </label>
-            {formData.presentationRequired && (
-              <>
-                <input placeholder="Required Slide Count (e.g. 15-20)" value={formData.slideCount || ''} onChange={(e) => handleUpdate('slideCount', e.target.value)} className="form-input" />
-                <textarea placeholder="Defence requirements, format, or likely questions" value={formData.defenceRequirements || ''} onChange={(e) => handleUpdate('defenceRequirements', e.target.value)} className="form-input min-h-[80px]" />
-              </>
-            )}
-          </div>
-        );
-      case 11:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">12. Special Instructions</h3>
-            <textarea placeholder="Provide any other specific instructions from your supervisor, department, or yourself. What must the specialist NOT change?" value={formData.specialInstructions || ''} onChange={(e) => handleUpdate('specialInstructions', e.target.value)} className="form-input min-h-[150px]" />
-          </div>
-        );
-      case 12:
-        return (
-          <div className="space-y-6">
-            <h3 className="text-2xl font-bold text-center">13. Specification Summary</h3>
-            <div className="bento-card p-6 bg-muted/20 border-border max-h-[400px] overflow-y-auto">
-              <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div><dt className="font-bold text-muted-foreground">Title</dt><dd className="font-medium">{formData.projectTitle || 'N/A'}</dd></div>
-                <div><dt className="font-bold text-muted-foreground">Institution</dt><dd className="font-medium">{formData.institution || 'N/A'}</dd></div>
-                <div><dt className="font-bold text-muted-foreground">Project Type</dt><dd className="font-medium">{formData.projectType || 'N/A'}</dd></div>
-                <div><dt className="font-bold text-muted-foreground">Target Pages</dt><dd className="font-medium">{formData.targetPages || 'N/A'}</dd></div>
-                <div><dt className="font-bold text-muted-foreground">Citation Style</dt><dd className="font-medium">{formData.citationStyle || 'N/A'}</dd></div>
-                <div><dt className="font-bold text-muted-foreground">Chapters</dt><dd className="font-medium">{formData.chapterCount || 'N/A'}</dd></div>
-                <div className="md:col-span-2"><dt className="font-bold text-muted-foreground">Methodology</dt><dd className="font-medium">{formData.methodology || 'N/A'}</dd></div>
-              </dl>
-            </div>
-            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">
-                  I have reviewed the project specifications supplied above and confirm that they accurately represent my requirements. I understand that modifying these post-payment may incur additional charges or delays.
-                </span>
-              </label>
-            </div>
-            <button 
-              onClick={handleConfirm}
-              disabled={!confirmed}
-              className="btn-primary w-full py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Confirm Specification & Proceed to Checkout
-            </button>
-          </div>
-        );
-      default:
-        return null;
+  const confirmSpecification = async () => {
+    if (!user || !confirmed) return;
+    const validation = validateSpecification(formData);
+    if (validation.length) {
+      setErrors(validation);
+      setCurrentStep(0);
+      return;
+    }
+    try {
+      setSaving(true);
+      await saveProjectSpecification(user.uid, { ...formData, selectedSpecialistId: specialistId }, 'CONFIRMED');
+      localStorage.setItem('finalyzed_project_confirmed', JSON.stringify({ ...formData, selectedSpecialistId: specialistId }));
+      setIsSaved(true);
+      navigate('/checkout');
+    } catch (error) {
+      console.error(error);
+      setErrors(['We could not save your confirmed specification. Please try again.']);
+    } finally {
+      setSaving(false);
     }
   };
 
-  return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-6 md:py-12">
-      <div className="mb-6 md:mb-12 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Project Specification</h1>
-          <p className="text-muted-foreground">Step {currentStep + 1} of {WIZARD_STEPS.length}</p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {isSaved ? <span className="flex items-center gap-1 text-green-500"><Check className="w-4 h-4" /> Saved</span> : <span className="flex items-center gap-1"><Save className="w-4 h-4" /> Autosaving...</span>}
-        </div>
-      </div>
+  const summary = useMemo(() => [
+    ['Title', formData.projectTitle], ['Institution', formData.institution], ['Department', formData.department],
+    ['Project Type', formData.projectType], ['Target Pages', formData.targetPages || formData.maxPages],
+    ['Citation', formData.citationStyle], ['Chapters', formData.chapterCount], ['Specialist', specialistId ? 'Selected specialist' : 'To be assigned'],
+  ], [formData, specialistId]);
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Mobile Progress Indicator */}
-        <div className="lg:hidden col-span-1 mb-4 flex flex-col gap-2">
-          <div className="flex justify-between text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            <span>Step {currentStep + 1} of {WIZARD_STEPS.length}</span>
-            <span className="text-primary truncate ml-4">{WIZARD_STEPS[currentStep]}</span>
-          </div>
-          <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex">
-            {WIZARD_STEPS.map((_, idx) => (
-              <div 
-                key={idx} 
-                className={`h-full flex-1 ${idx === currentStep ? 'bg-primary' : idx < currentStep ? 'bg-primary/50' : 'bg-transparent'} ${idx < WIZARD_STEPS.length - 1 ? 'border-r border-background' : ''}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Navigation Sidebar */}
-        <div className="hidden lg:block lg:col-span-1 border-r border-border pr-6">
-          <nav className="space-y-1 relative">
-            {WIZARD_STEPS.map((step, idx) => {
-              const isActive = currentStep === idx;
-              const isPast = currentStep > idx;
-              return (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentStep(idx)}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all flex items-center justify-between ${
-                    isActive ? 'bg-primary text-white font-bold shadow-sm' :
-                    isPast ? 'text-foreground hover:bg-muted' : 'text-muted-foreground opacity-50'
-                  }`}
-                >
-                  {step}
-                  {isPast && <Check className="w-4 h-4 text-green-500" />}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Form Content */}
-        <div className="col-span-1 lg:col-span-3">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              className="bg-background border border-border rounded-xl p-4 md:p-8 shadow-sm min-h-[400px] flex flex-col justify-between"
-            >
-              <div className="flex-1">
-                {renderStepContent()}
-              </div>
-              
-              {/* Footer Controls */}
-              {currentStep < WIZARD_STEPS.length - 1 && (
-                <div className="flex justify-between items-center mt-12 pt-6 border-t border-border">
-                  <button
-                    onClick={prevStep}
-                    disabled={currentStep === 0}
-                    className="px-6 py-2 rounded-lg font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 flex items-center gap-2"
-                  >
-                    <ChevronLeft className="w-4 h-4" /> Back
-                  </button>
-                  <button
-                    onClick={nextStep}
-                    className="btn-primary px-8 py-2 flex items-center gap-2"
-                  >
-                    Next <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        .form-input {
-          @apply w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all;
-        }
-      `}} />
-    </div>
+  const input = (label: string, key: string, type = 'text', placeholder = '') => (
+    <label className="block space-y-2">
+      <span className="text-sm font-semibold">{label}</span>
+      <input type={type} value={formData[key] ?? ''} placeholder={placeholder} onChange={e => update(key, e.target.value)} className="form-input" />
+    </label>
   );
+  const textarea = (label: string, key: string, placeholder = '') => (
+    <label className="block space-y-2">
+      <span className="text-sm font-semibold">{label}</span>
+      <textarea value={formData[key] ?? ''} placeholder={placeholder} onChange={e => update(key, e.target.value)} className="form-input min-h-[120px] resize-y" />
+    </label>
+  );
+  const select = (label: string, key: string, options: string[]) => (
+    <label className="block space-y-2">
+      <span className="text-sm font-semibold">{label}</span>
+      <select value={formData[key] ?? ''} onChange={e => update(key, e.target.value)} className="form-input">
+        <option value="">Select {label}</option>{options.map(option => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  );
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return <div className="space-y-5"><StepTitle n="1" title="Student information" text="Confirm the identity and academic details that will appear on your project." /><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{input('Full name', 'fullName')}{input('Matriculation / registration number', 'matricNumber')}{input('Institution', 'institution')}{input('Faculty / school', 'faculty')}{input('Department', 'department')}{input('Degree / award', 'degree')}{input('Project supervisor', 'supervisor')}{input('Head of department', 'hod')}{input('Submission month', 'submissionMonth', 'text', 'e.g. August')}{input('Submission year', 'submissionYear', 'number', 'e.g. 2026')}</div></div>;
+      case 1:
+        return <div className="space-y-5"><StepTitle n="2" title="Project identity" text="Tell the specialist exactly what project is being commissioned." />{input('Exact approved project title', 'projectTitle', 'text', 'Enter the approved title')}{select('Project type', 'projectType', ['Design & Construction', 'Research Study', 'Software Development', 'Case Study', 'Business Plan', 'Survey-Based Study', 'Other'])}{input('Core subject matter / technology / method', 'subjectArea')}{textarea('Problem being addressed', 'problemStatement')}{textarea('Aim and objectives', 'aimObjectives', 'State one aim and the measurable objectives expected.')}{textarea('Target outcome / result', 'expectedOutcome')}{textarea('Supervisor instructions', 'supervisorInstructions')}{check('Topic officially approved?', 'topicApproved')}</div>;
+      case 2:
+        return <div className="space-y-5"><StepTitle n="3" title="Institution requirements" text="Use the institution's actual rules where available. Finalyzed will preserve these requirements for future reference." />{select('Does your institution have a prescribed project format?', 'hasPrescribedFormat', ['Yes', 'No', 'Unknown'])}{formData.hasPrescribedFormat === 'Yes' && <textarea('Describe the prescribed format', 'prescribedFormatDetails')}{textarea('Required preliminary pages', 'preliminaryPages', 'e.g. Certification, Dedication, Acknowledgement, Abstract, TOC...')}{textarea('Required chapter structure / department-specific rules', 'institutionStructure')}{textarea('Standards / regulatory bodies that apply', 'standardsBodies', 'e.g. ISO, CBN, NAFDAC, NCC, relevant engineering standard...')}{textarea('Ethical, safety, data-protection or institutional requirements', 'ethicalRequirements')}</div>;
+      case 3:
+        return <div className="space-y-5"><StepTitle n="4" title="Formatting" text="These settings become part of the specification the writer and editor must follow." /><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{select('Font family', 'fontFamily', ['Times New Roman', 'Arial', 'Calibri', 'Institution Standard', 'Other'])}{input('Body font size (pt)', 'bodyFontSize', 'number')}{input('Heading font size (pt)', 'headingFontSize', 'number')}{select('Line spacing', 'lineSpacing', ['1.0', '1.15', '1.5', '2.0', 'Institution Standard'])}{select('Body alignment', 'alignment', ['Justified', 'Left', 'Institution Standard'])}{input('Paragraph indentation', 'paragraphIndentation', 'text', 'e.g. 0.5 inch')}{input('Left margin (inch)', 'marginLeft', 'number')}{input('Right margin (inch)', 'marginRight', 'number')}{input('Top margin (inch)', 'marginTop', 'number')}{input('Bottom margin (inch)', 'marginBottom', 'number')}{select('Preliminary page numbering', 'preliminaryNumbering', ['Roman numerals', 'Arabic numerals', 'Institution Standard'])}{select('Chapter page numbering', 'chapterNumbering', ['Arabic numerals', 'Institution Standard'])}</div>{textarea('Header / footer rules', 'headerFooterRules')}{textarea('Table / figure / caption rules', 'tableFigureRules')}</div>;
+      case 4:
+        return <div className="space-y-5"><StepTitle n="5" title="Page & length" text="Your plan determines the maximum deliverable. Requested limits cannot silently exceed the purchased plan." /><div className="grid grid-cols-1 md:grid-cols-3 gap-4">{input('Minimum pages', 'minPages', 'number')}{input('Target pages', 'targetPages', 'number')}{input('Maximum pages', 'maxPages', 'number')}</div><div className="grid grid-cols-1 md:grid-cols-3 gap-3">{check('Preliminary pages count', 'countPrelim')}{check('References count', 'countReferences')}{check('Appendices count', 'countAppendices')}</div>{textarea('Page-budget or length instructions', 'pageBudgetInstructions')}</div>;
+      case 5:
+        return <div className="space-y-5"><StepTitle n="6" title="Structure" text="Define the chapter architecture instead of forcing every department into the same template." />{input('Number of chapters', 'chapterCount', 'number')}<div className="grid grid-cols-1 md:grid-cols-2 gap-4">{Array.from({ length: Math.min(8, Number(formData.chapterCount) || 5) }, (_, i) => input(`Chapter ${i + 1} title`, `chapter${i + 1}Title`, 'text', i === 0 ? 'e.g. Introduction' : 'Enter required title'))}</div>{textarea('Mandatory sections / subsections', 'mandatorySubsections')}{textarea('Sections that must be excluded', 'excludedSections')}</div>;
+      case 6:
+        return <div className="space-y-5"><StepTitle n="7" title="Citation & references" text="Citations and references are part of QA, not an afterthought." />{select('Citation style', 'citationStyle', ['APA', 'IEEE', 'Harvard', 'MLA', 'Vancouver', 'Chicago', 'Other'])}<div className="grid grid-cols-1 md:grid-cols-2 gap-4">{input('Minimum references', 'minReferences', 'number')}{input('Maximum references', 'maxReferences', 'number')}</div>{textarea('Source requirements', 'sourceRequirements', 'Recent sources, textbooks, journals, standards, databases, exclusions, etc.')}{textarea('Required standards / datasheets / regulatory references', 'requiredReferences')}</div>;
+      case 7:
+        return <div className="space-y-5"><StepTitle n="8" title="Methodology / design" text="The questions adapt to the kind of project you selected." />{textarea('Methodology / research design / system architecture', 'methodology')}{input('Required technologies / instruments / tools', 'technologies')}{textarea('Population, sample, scope or system boundary', 'scope')}{textarea('Sampling / data collection method', 'dataCollectionMethod')}{textarea('Analysis / calculation / testing method', 'analysisMethod')}{textarea('Safety, ethical and regulatory compliance approach', 'complianceApproach')}{textarea('Design decisions and justification', 'designJustification')}</div>;
+      case 8:
+        return <div className="space-y-5"><StepTitle n="9" title="Data & results" text="Tell us what evidence exists and what the finished project must demonstrate." />{select('Do you already have real project data?', 'hasRealData', ['Yes', 'No', 'Partial'])}{formData.hasRealData !== 'No' && textarea('Describe or upload the available data/results', 'availableData')}{textarea('Expected results, tables, charts, diagrams or technical drawings', 'resultRequirements')}{textarea('Target performance / measurable outcome', 'targetOutcomeMetric')}{textarea('Testing / validation requirements', 'testingRequirements')}<div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-sm">Finalyzed will never represent invented data as genuine research evidence. If illustrative data is specifically requested, it must be clearly identified as illustrative.</div></div>;
+      case 9:
+        return <div className="space-y-5"><StepTitle n="10" title="Appendices" text="Select the supporting materials that should accompany the final deliverable." /><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{['Questionnaire','Interview Questions','Test Log','Bill of Materials','Budget','Code Listing','Technical Drawings','Financial Statements','Reference Tables','Implementation Timeline'].map(item => <label key={item} className="flex items-center gap-3 rounded-xl border border-border p-3 hover:bg-muted/40 cursor-pointer"><input type="checkbox" checked={formData.appendices?.includes(item) || false} onChange={e => update('appendices', e.target.checked ? [...(formData.appendices || []), item] : (formData.appendices || []).filter((x: string) => x !== item))} />{item}</label>)}</div>{input('Other appendices', 'otherAppendices')}{textarea('Appendix-specific instructions', 'appendixInstructions')}</div>;
+      case 10:
+        return <div className="space-y-5"><StepTitle n="11" title="Presentation" text="Presentation deliverables depend on the plan you purchase." />{check('Project presentation is required', 'presentationRequired')}{formData.presentationRequired && <><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{input('Expected slide count', 'slideCount', 'text', 'e.g. 15–20')}{select('Presentation style', 'presentationStyle', ['Academic defence', 'Institution template', 'Minimal professional', 'Other'])}</div>{textarea('Defence requirements / likely questions', 'defenceRequirements')}</>}{check('Simplified presentation guide is required', 'presentationGuideRequired')}<div className="p-4 rounded-xl border border-primary/20 bg-primary/5 text-sm"><strong>Plan reminder:</strong> Standard includes presentation slides. Premium includes presentation slides and the simplified presentation guide.</div></div>;
+      case 11:
+        return <div className="space-y-5"><StepTitle n="12" title="Special instructions" text="Anything important that does not fit elsewhere belongs here." />{textarea('Special instructions', 'specialInstructions')}{textarea('Things the writer must NOT change', 'doNotChange')}{textarea('Expected communication / delivery instructions', 'deliveryInstructions')}{textarea('Other notes from supervisor or department', 'otherNotes')}</div>;
+      default:
+        return <div className="space-y-6"><StepTitle n="13" title="Confirm your project specification" text="This record will be attached to the commission and used by the writer and editor during QA." /><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{summary.map(([label, value]) => <div key={label} className="rounded-xl border border-border p-4"><div className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">{label}</div><div className="font-semibold mt-1 break-words">{String(value || 'Not specified')}</div></div>)}</div><div className="rounded-xl border border-primary/20 bg-primary/5 p-5"><div className="flex items-start gap-3"><ShieldCheck className="w-5 h-5 text-primary mt-0.5" /><div><div className="font-bold">Specification confirmation</div><p className="text-sm text-muted-foreground mt-1">Review every section before confirming. Once confirmed, this version becomes the authoritative specification for checkout and assignment.</p></div></div><label className="flex items-start gap-3 mt-5 cursor-pointer"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="w-5 h-5 mt-0.5" /><span className="text-sm font-medium">I have reviewed the project specifications and confirm that they accurately represent my requirements.</span></label></div><button onClick={confirmSpecification} disabled={!confirmed || saving} className="btn-primary w-full py-4 text-base disabled:opacity-50">{saving ? 'Saving confirmed specification…' : 'Confirm Specification & Proceed to Checkout'}</button></div>;
+    }
+  };
+
+  if (!user) return <div className="max-w-xl mx-auto px-4 py-16 text-center"><AlertCircle className="w-10 h-10 mx-auto text-primary mb-4" /><h1 className="text-2xl font-bold">Sign in to start your project</h1><p className="text-muted-foreground mt-2">Your specification is saved to your Finalyzed account.</p><button onClick={() => navigate('/login')} className="btn-primary mt-6 px-6 py-3">Sign in</button></div>;
+
+  return <div className="w-full max-w-6xl mx-auto px-4 py-6 md:py-12">
+    <header className="mb-6 md:mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.2em] font-bold text-primary">Finalyzed project setup</div><h1 className="text-3xl md:text-4xl font-bold tracking-tight mt-1">Project Specification</h1><p className="text-muted-foreground mt-2">Create one precise specification for the writer and quality editor.</p></div><div className="text-sm text-muted-foreground flex items-center gap-2">{saving ? <><Save className="w-4 h-4 animate-pulse" /> Saving…</> : isSaved ? <><Check className="w-4 h-4 text-green-500" /> Saved</> : <><Save className="w-4 h-4" /> Autosaved</>}</div></header>
+    {errors.length > 0 && <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/5 p-4"><div className="font-bold flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Please complete the required fields</div><ul className="mt-2 text-sm list-disc pl-5">{errors.map(error => <li key={error}>{error}</li>)}</ul></div>}
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <aside className="hidden lg:block lg:col-span-1"><nav className="sticky top-24 space-y-1">{WIZARD_STEPS.map((step, index) => <button key={step} onClick={() => { if (index <= currentStep) setCurrentStep(index); }} className={`w-full text-left px-4 py-3 rounded-xl text-sm flex items-center justify-between transition-all ${index === currentStep ? 'bg-primary text-white shadow-md' : index < currentStep ? 'hover:bg-muted text-foreground' : 'text-muted-foreground opacity-50'}`}><span>{index + 1}. {step}</span>{index < currentStep && <Check className="w-4 h-4" />}</button>)}</nav></aside>
+      <main className="lg:col-span-3"><div className="lg:hidden mb-4"><div className="flex justify-between text-xs font-bold text-muted-foreground mb-2"><span>Step {currentStep + 1} of {WIZARD_STEPS.length}</span><span>{WIZARD_STEPS[currentStep]}</span></div><div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${((currentStep + 1) / WIZARD_STEPS.length) * 100}%` }} /></div></div><AnimatePresence mode="wait"><motion.section key={currentStep} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }} className="bg-background border border-border rounded-2xl p-5 md:p-8 shadow-sm min-h-[500px]">{renderStep()}</motion.section></AnimatePresence>{currentStep < WIZARD_STEPS.length - 1 && <div className="flex justify-between mt-5"><button onClick={prevStep} disabled={currentStep === 0} className="px-5 py-3 rounded-xl font-medium disabled:opacity-30 flex items-center gap-2 hover:bg-muted"><ChevronLeft className="w-4 h-4" /> Back</button><button onClick={nextStep} className="btn-primary px-6 py-3 flex items-center gap-2">Next <ChevronRight className="w-4 h-4" /></button></div>}</main>
+    </div>
+  </div>;
 }
+
+function StepTitle({ n, title, text }: { n: string; title: string; text: string }) { return <div className="mb-6"><div className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Step {n}</div><h2 className="text-2xl font-bold mt-1">{title}</h2><p className="text-muted-foreground mt-2 max-w-2xl">{text}</p></div>; }
+function check(label: string, key: string) { return <label className="flex items-center gap-3 rounded-xl border border-border p-3 cursor-pointer hover:bg-muted/40"><input type="checkbox" checked={false} onChange={() => undefined} className="w-4 h-4" /><span className="text-sm">{label}</span></label>; }
