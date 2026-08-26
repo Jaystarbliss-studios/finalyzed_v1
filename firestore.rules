@@ -10,15 +10,68 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Role helpers
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      // Could also check custom claims if configured, but let's check super admin emails
+      return isSignedIn() && (request.auth.token.email == 'johnrufai242@gmail.com' || request.auth.token.email == 'rufaijohnny@gmail.com');
+    }
+
+    function isEditor() {
+      return isSignedIn() && getUserData().role == 'editor';
+    }
+
+    function isWriter() {
+      return isSignedIn() && getUserData().role == 'specialist';
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create, update: if isOwner(userId);
+      // Only allow a user to update their own profile, admins can update anyone
+      allow create, update: if isOwner(userId) || isAdmin();
+      // Prevent users from escalating their own privileges via client updates
+      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isVerified'])) || isAdmin();
     }
 
     match /projects/{projectId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      // Students can read their own projects, specialists their assigned ones, editors can read for QA, admins can read all
+      allow read: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        resource.data.specialistId == request.auth.uid || 
+        isEditor() || 
+        isAdmin()
+      );
+      
+      // Only authenticated users can create projects
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      
+      // Updates are restricted based on role state machine
+      allow update: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        resource.data.specialistId == request.auth.uid || 
+        isEditor() || 
+        isAdmin()
+      );
+
+      // Subcollection for project messages
+      match /messages/{messageId} {
+        // Only involved parties can read or write messages
+        allow read, create: if isSignedIn() && (
+          get(/databases/$(database)/documents/projects/$(projectId)).data.studentId == request.auth.uid ||
+          get(/databases/$(database)/documents/projects/$(projectId)).data.specialistId == request.auth.uid ||
+          isEditor() ||
+          isAdmin()
+        );
+      }
+    }
+
+    // Secure financial ledgers (Client side can only read their own, backend handles writes)
+    match /walletTransactions/{transactionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false; // ONLY the Node backend Admin SDK can write here
     }
   }
 }

@@ -131,7 +131,7 @@ export default function Home() {
           <div className="relative">
             <div className="aspect-square md:aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border border-border">
               <img 
-                src="/finalyzed.png" 
+                src="/finalyzed-1.png" 
                 alt="Finalyzed Brand Graphic" 
                 className="w-full h-full object-cover"
               />

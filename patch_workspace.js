@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import fs from 'fs';
+
+const newCode = `import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, Link as LinkIcon, Send, Clock, CheckCircle, Upload, MessageSquare, AlertCircle, FileCheck, ArrowLeft, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import ProjectChat from '../components/ProjectChat';
 
 export default function ProjectWorkspace() {
   const { id } = useParams();
@@ -22,7 +23,6 @@ export default function ProjectWorkspace() {
   
   // Student states
   const [revisionNotes, setRevisionNotes] = useState('');
-  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -316,27 +316,24 @@ export default function ProjectWorkspace() {
             </button>
           </div>
 
-          {isChatOpen ? (
-            <ProjectChat projectId={id!} onClose={() => setIsChatOpen(false)} />
-          ) : (
-            <div className="bento-card p-6 border-primary/20 bg-primary/5">
-              <h3 className="font-bold mb-2 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-primary" />
-                Communication
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Need to clarify requirements? Use the workspace chat to talk directly.
-              </p>
-              <button 
-                onClick={() => setIsChatOpen(true)}
-                className="w-full py-2 bg-background border border-primary/30 rounded-md text-sm font-medium hover:border-primary transition-colors text-primary flex items-center justify-center gap-2"
-              >
-                <MessageSquare className="w-4 h-4" /> Open Chat
-              </button>
-            </div>
-          )}
+          <div className="bento-card p-6 border-primary/20 bg-primary/5">
+            <h3 className="font-bold mb-2 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-primary" />
+              Communication
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Need to clarify requirements? Use the workspace chat to talk directly.
+            </p>
+            <button className="w-full py-2 bg-background border border-primary/30 rounded-md text-sm font-medium hover:border-primary transition-colors text-primary flex items-center justify-center gap-2">
+              <MessageSquare className="w-4 h-4" /> Open Chat
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/ProjectWorkspace.tsx', newCode);
+console.log('patched project workspace');

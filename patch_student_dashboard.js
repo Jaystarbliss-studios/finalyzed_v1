@@ -1,4 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import fs from 'fs';
+let code = fs.readFileSync('src/pages/StudentDashboard.tsx', 'utf8');
+
+// The file currently has hardcoded active projects and history.
+// We need to fetch from Firestore.
+const newCode = `import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, BookOpen, Clock, Zap, CheckCircle, Shield, ArrowRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -20,7 +25,7 @@ export default function StudentDashboard() {
           const snapshot = await getDocs(q);
           const pData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           // sort locally by date since we don't have a composite index guaranteed yet
-          pData.sort((a, b) => (b as any).createdAt?.toMillis() - (a as any).createdAt?.toMillis());
+          pData.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
           setProjects(pData);
         } catch (error) {
           console.error("Error fetching projects", error);
@@ -61,7 +66,7 @@ export default function StudentDashboard() {
               <Zap className="w-6 h-6 text-primary" />
             </div>
             <div className="flex flex-col items-center gap-1 my-4">
-              <span className="text-4xl md:text-5xl font-light text-foreground tracking-tighter">{(userData?.walletBalance || 0).toLocaleString()}</span>
+              <span className="text-4xl md:text-5xl font-light text-foreground tracking-tighter">1,250</span>
               <span className="mono-label text-[10px]">Available Points</span>
             </div>
             <button className="text-[10px] text-primary font-bold uppercase tracking-widest mt-2 hover:underline">
@@ -103,7 +108,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               activeProjects.map(project => (
-                <Link to={`/workspace/${project.id}`} key={project.id} className="group block p-4 -mx-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-border">
+                <Link to={\`/workspace/\${project.id}\`} key={project.id} className="group block p-4 -mx-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-border">
                   <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4 gap-2">
                     <div>
                       <h3 className="text-lg font-medium text-foreground group-hover:text-primary transition-colors">{project.title}</h3>
@@ -127,11 +132,11 @@ export default function StudentDashboard() {
                         <span className="text-[10px] text-primary font-medium uppercase tracking-wider">Paid</span>
                       </div>
                       <div className="flex flex-col items-center gap-2 relative z-10">
-                        <div className={`w-3 h-3 rounded-full ${project.specialistId !== 'unassigned' ? 'bg-primary' : 'bg-muted-foreground/30'} ring-4 ring-background`}></div>
+                        <div className={\`w-3 h-3 rounded-full \${project.specialistId !== 'unassigned' ? 'bg-primary' : 'bg-muted-foreground/30'} ring-4 ring-background\`}></div>
                         <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Writer</span>
                       </div>
                       <div className="flex flex-col items-center gap-2 relative z-10">
-                        <div className={`w-3 h-3 rounded-full ${['EDITOR_REVIEWING', 'AVAILABLE_TO_STUDENT'].includes(project.status) ? 'bg-primary' : 'bg-muted-foreground/30'} ring-4 ring-background`}></div>
+                        <div className={\`w-3 h-3 rounded-full \${['EDITOR_REVIEWING', 'AVAILABLE_TO_STUDENT'].includes(project.status) ? 'bg-primary' : 'bg-muted-foreground/30'} ring-4 ring-background\`}></div>
                         <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Editor</span>
                       </div>
                       <div className="flex flex-col items-center gap-2 relative z-10">
@@ -172,3 +177,6 @@ export default function StudentDashboard() {
     </div>
   );
 }
+`;
+fs.writeFileSync('src/pages/StudentDashboard.tsx', newCode);
+console.log('patched student dashboard');

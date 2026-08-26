@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import fs from 'fs';
+
+const code = `import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Search, Building2, CheckCircle, AlertCircle, GraduationCap, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -144,3 +146,7 @@ export default function KnowledgeBase() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/KnowledgeBase.tsx', code);
+console.log('patched knowledgebase with live db integration');

@@ -339,8 +339,8 @@ export default function ProjectWizard() {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-12">
-      <div className="mb-12 flex justify-between items-center">
+    <div className="w-full max-w-5xl mx-auto px-4 py-6 md:py-12">
+      <div className="mb-6 md:mb-12 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Project Specification</h1>
           <p className="text-muted-foreground">Step {currentStep + 1} of {WIZARD_STEPS.length}</p>
@@ -351,6 +351,22 @@ export default function ProjectWizard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Mobile Progress Indicator */}
+        <div className="lg:hidden col-span-1 mb-4 flex flex-col gap-2">
+          <div className="flex justify-between text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            <span>Step {currentStep + 1} of {WIZARD_STEPS.length}</span>
+            <span className="text-primary truncate ml-4">{WIZARD_STEPS[currentStep]}</span>
+          </div>
+          <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex">
+            {WIZARD_STEPS.map((_, idx) => (
+              <div 
+                key={idx} 
+                className={`h-full flex-1 ${idx === currentStep ? 'bg-primary' : idx < currentStep ? 'bg-primary/50' : 'bg-transparent'} ${idx < WIZARD_STEPS.length - 1 ? 'border-r border-background' : ''}`}
+              />
+            ))}
+          </div>
+        </div>
+
         {/* Navigation Sidebar */}
         <div className="hidden lg:block lg:col-span-1 border-r border-border pr-6">
           <nav className="space-y-1 relative">
@@ -383,7 +399,7 @@ export default function ProjectWizard() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
-              className="bg-background border border-border rounded-xl p-6 md:p-8 shadow-sm min-h-[400px] flex flex-col justify-between"
+              className="bg-background border border-border rounded-xl p-4 md:p-8 shadow-sm min-h-[400px] flex flex-col justify-between"
             >
               <div className="flex-1">
                 {renderStepContent()}

@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import fs from 'fs';
+
+const newCode = `import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, Send, Clock, CheckCircle, ShieldCheck, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -131,11 +133,11 @@ export default function QAWorkspace() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button 
                     onClick={() => setVerdict('approve')}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    className={\`p-4 rounded-xl border-2 text-left transition-all \${
                       verdict === 'approve' 
                         ? 'border-green-500 bg-green-500/10' 
                         : 'border-border hover:border-green-500/50'
-                    }`}
+                    }\`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-green-500">Approve & Deliver</span>
@@ -146,11 +148,11 @@ export default function QAWorkspace() {
 
                   <button 
                     onClick={() => setVerdict('revise')}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    className={\`p-4 rounded-xl border-2 text-left transition-all \${
                       verdict === 'revise' 
                         ? 'border-red-500 bg-red-500/10' 
                         : 'border-border hover:border-red-500/50'
-                    }`}
+                    }\`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-red-500">Request Revisions</span>
@@ -175,9 +177,9 @@ export default function QAWorkspace() {
                     <button
                       onClick={handleSubmitReview}
                       disabled={submitting || (verdict === 'revise' && !feedback.trim())}
-                      className={`w-full py-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${
+                      className={\`w-full py-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 \${
                         verdict === 'approve' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'
-                      }`}
+                      }\`}
                     >
                       {submitting ? 'Processing...' : 'Submit Final Verdict'}
                     </button>
@@ -239,3 +241,6 @@ export default function QAWorkspace() {
     </div>
   );
 }
+`;
+fs.writeFileSync('src/pages/QAWorkspace.tsx', newCode);
+console.log('patched qa workspace');

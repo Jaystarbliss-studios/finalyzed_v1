@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import fs from 'fs';
+
+const code = `import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -180,7 +182,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="flex h-screen overflow-hidden bg-background font-sans selection:bg-primary/20">
       
       {/* DESKTOP SIDEBAR */}
-      <aside className={`hidden md:flex flex-col border-r border-border bg-background transition-all duration-300 relative z-20 ${isSidebarExpanded ? 'w-64' : 'w-20'}`}>
+      <aside className={\`hidden md:flex flex-col border-r border-border bg-background transition-all duration-300 relative z-20 \${isSidebarExpanded ? 'w-64' : 'w-20'}\`}>
         <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
           {isSidebarExpanded ? (
             <Link to="/dashboard" className="flex items-center gap-3">
@@ -206,15 +208,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 key={item.path}
                 to={item.path}
                 title={item.name}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
+                className={\`flex items-center gap-3 px-3 py-3 rounded-xl transition-all \${
                   item.isPrimary
                     ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary-dark'
                     : activeCheck
                     ? 'bg-primary/10 text-primary font-bold'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground font-medium'
-                } ${!isSidebarExpanded && 'justify-center'}`}
+                } \${!isSidebarExpanded && 'justify-center'}\`}
               >
-                <item.icon className={`w-5 h-5 shrink-0 ${item.isPrimary ? 'text-primary-foreground' : (activeCheck ? 'text-primary' : '')}`} />
+                <item.icon className={\`w-5 h-5 shrink-0 \${item.isPrimary ? 'text-primary-foreground' : (activeCheck ? 'text-primary' : '')}\`} />
                 {isSidebarExpanded && <span>{item.name}</span>}
               </Link>
             );
@@ -224,7 +226,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="p-4 border-t border-border shrink-0 flex flex-col gap-2">
           <button
             onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors w-full ${!isSidebarExpanded && 'justify-center'}`}
+            className={\`flex items-center gap-3 px-3 py-2 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors w-full \${!isSidebarExpanded && 'justify-center'}\`}
             title="Collapse Sidebar"
           >
             {isSidebarExpanded ? <ChevronLeft className="w-5 h-5 shrink-0" /> : <ChevronRight className="w-5 h-5 shrink-0" />}
@@ -232,7 +234,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </button>
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors w-full ${!isSidebarExpanded && 'justify-center'}`}
+            className={\`flex items-center gap-3 px-3 py-2 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors w-full \${!isSidebarExpanded && 'justify-center'}\`}
             title="Log out"
           >
             <LogOut className="w-5 h-5 shrink-0" />
@@ -296,8 +298,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               );
             }
             return (
-              <Link key={item.path} to={item.path} className={`flex flex-col items-center p-2 min-w-[64px] transition-colors ${activeCheck ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                <item.icon className={`w-5 h-5 mb-1 ${activeCheck ? 'fill-primary/10' : ''}`} />
+              <Link key={item.path} to={item.path} className={\`flex flex-col items-center p-2 min-w-[64px] transition-colors \${activeCheck ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}\`}>
+                <item.icon className={\`w-5 h-5 mb-1 \${activeCheck ? 'fill-primary/10' : ''}\`} />
                 <span className="text-[10px] font-medium">{item.name}</span>
               </Link>
             );
@@ -335,3 +337,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+`;
+
+fs.writeFileSync('src/App.tsx', code);
+console.log('patched Layout architecture for sidebar');

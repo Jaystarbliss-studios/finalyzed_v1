@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import fs from 'fs';
+
+const code = `import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Shield, CreditCard, Lock, Zap, Star, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -58,7 +60,7 @@ export default function Checkout() {
     reference: (new Date()).getTime().toString(),
     email: user?.email || 'student@example.com',
     amount: totalAmount * 100, // in kobo
-    publicKey: (import.meta as any).env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder', // MUST BE PROVIDED IN .env
+    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder', // MUST BE PROVIDED IN .env
   };
 
   const initializePayment = usePaystackPayment(config);
@@ -156,11 +158,11 @@ export default function Checkout() {
                 <button
                   key={plan.id}
                   onClick={() => setSelectedPlan(plan.id)}
-                  className={`relative flex flex-col p-6 rounded-xl text-left transition-all border-2 ${
+                  className={\`relative flex flex-col p-6 rounded-xl text-left transition-all border-2 \${
                     selectedPlan === plan.id
                       ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
                       : 'border-border bg-background hover:border-primary/50'
-                  }`}
+                  }\`}
                 >
                   {plan.popular && (
                     <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-full">
@@ -169,9 +171,9 @@ export default function Checkout() {
                   )}
                   <div className="flex justify-between items-start mb-4">
                     {plan.icon}
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    <div className={\`w-5 h-5 rounded-full border-2 flex items-center justify-center \${
                       selectedPlan === plan.id ? 'border-primary' : 'border-muted'
-                    }`}>
+                    }\`}>
                       {selectedPlan === plan.id && <div className="w-2.5 h-2.5 bg-primary rounded-full" />}
                     </div>
                   </div>
@@ -269,3 +271,7 @@ export default function Checkout() {
     </div>
   );
 }
+`
+
+fs.writeFileSync('src/pages/Checkout.tsx', code);
+console.log('patched checkout with real paystack');

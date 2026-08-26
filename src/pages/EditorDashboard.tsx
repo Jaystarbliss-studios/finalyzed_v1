@@ -28,8 +28,7 @@ export default function EditorDashboard() {
       try {
         const q = query(
           collection(db, 'projects'),
-          where('status', '==', 'review'),
-          orderBy('updatedAt', 'desc')
+          where('status', '==', 'EDITOR_REVIEWING')
         );
         const querySnapshot = await getDocs(q);
         const reviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

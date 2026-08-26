@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Star, ShieldCheck, CheckCircle, Clock, BookOpen, ChevronRight } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface Specialist {
   id: string;
@@ -22,17 +24,23 @@ export default function SpecialistProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/specialists')
-      .then(res => res.json())
-      .then((data: Specialist[]) => {
-        const found = data.find(s => s.id === id);
-        setSpecialist(found || null);
-        setLoading(false);
-      })
-      .catch(err => {
+    const fetchSpecialist = async () => {
+      try {
+        if (!id) return;
+        const docRef = doc(db, 'users', id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setSpecialist({ id: docSnap.id, ...docSnap.data() } as any);
+        } else {
+          setSpecialist(null);
+        }
+      } catch (err) {
         console.error("Failed to fetch specialist:", err);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+    fetchSpecialist();
   }, [id]);
 
   if (loading) {

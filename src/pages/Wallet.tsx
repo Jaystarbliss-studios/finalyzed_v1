@@ -20,7 +20,7 @@ export default function Wallet() {
           <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
           <div className="relative z-10">
             <span className="text-primary-foreground/80 text-sm font-medium uppercase tracking-wider mb-2 block">Available Balance</span>
-            <div className="text-5xl font-bold mb-8">₦24,500.00</div>
+            <div className="text-5xl font-bold mb-8">₦{(userData?.walletBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             
             <div className="flex gap-4">
               <button className="bg-white text-primary px-6 py-3 rounded-lg font-bold text-sm hover:bg-white/90 transition-colors flex items-center gap-2">
@@ -35,7 +35,7 @@ export default function Wallet() {
 
         <div className="bento-card p-6 flex flex-col justify-center">
           <span className="text-muted-foreground text-sm font-medium uppercase tracking-wider mb-2 block">Pending Clearance</span>
-          <div className="text-3xl font-bold mb-4">₦10,000.00</div>
+          <div className="text-3xl font-bold mb-4">₦{(userData?.pendingClearance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           
           <div className="w-full bg-muted rounded-full h-2 mb-2">
             <div className="bg-yellow-400 h-2 rounded-full w-[60%]"></div>
