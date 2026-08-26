@@ -8,11 +8,12 @@ import ProjectWizard from './pages/ProjectWizard';
 import Marketplace from './pages/Marketplace';
 import SpecialistProfile from './pages/SpecialistProfile';
 import Login from './pages/Login';
-import Register from './pages/Register';
+
 import Checkout from './pages/Checkout';
 import ProjectWorkspace from './pages/ProjectWorkspace';
 import QAWorkspace from './pages/QAWorkspace';
 import AdminDashboard from './pages/AdminDashboard';
+import Onboarding from './pages/Onboarding';
 import Wallet from './pages/Wallet';
 import HowItWorks from './pages/HowItWorks';
 import KnowledgeBase from './pages/KnowledgeBase';
@@ -208,6 +209,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<DashboardDispatcher />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/start-project" element={<ProjectWizard />} />
             <Route path="/specialists" element={<Marketplace />} />
             <Route path="/specialist/:id" element={<SpecialistProfile />} />
