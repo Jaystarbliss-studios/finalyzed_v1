@@ -27,8 +27,7 @@
     "react-router-dom": "^7.18.2",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.6.0",
-    "vite": "^6.2.3",
-    "recharts": "^3.10.1"
+    "vite": "^6.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
