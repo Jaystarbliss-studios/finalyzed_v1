@@ -22,6 +22,7 @@ import HowItWorks from './pages/HowItWorks';
 import KnowledgeBase from './pages/KnowledgeBase';
 import Wallet from './pages/Wallet';
 import Login from './pages/Login';
+import OAuthCallback from './pages/OAuthCallback';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { user, userData, loading } = useAuth();
@@ -339,6 +340,7 @@ export default function App() {
             <Route path="/knowledge-base" element={<KnowledgeBase />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<OAuthCallback />} />
             <Route path="*" element={<div className="p-8 text-center mt-20"><h2 className="text-2xl font-bold">Coming Soon</h2></div>} />
           </Routes>
         </Layout>
