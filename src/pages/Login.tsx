@@ -12,16 +12,14 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setError(''); setLoading(true);
     try {
-      const { data: existingProfile, error: profileError } = await (async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return { data: null, error: null };
-        return supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
-      })();
-      if (profileError) console.warn('Profile lookup before OAuth failed:', profileError);
-      const redirectTo = `${window.location.origin}/onboarding`;
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+      // OAuth is intentionally completed before role routing. A first-time Google
+      // account has no Finalyzed profile yet and must complete onboarding.
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
       if (oauthError) throw oauthError;
-      if (existingProfile) navigate('/dashboard', { replace: true });
     } catch (err: any) {
       console.error('Google authentication failed:', err);
       setError(err?.message || 'Unable to sign in with Google. Please try again.');
