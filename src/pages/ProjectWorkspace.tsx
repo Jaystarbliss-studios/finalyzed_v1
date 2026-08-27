@@ -1,342 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, Link as LinkIcon, Send, Clock, CheckCircle, Upload, MessageSquare, AlertCircle, FileCheck, ArrowLeft, Download } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/supabase';
-import { doc, getDoc, updateDoc, serverTimestamp } from '../lib/supabaseCompat';
-import { motion, AnimatePresence } from 'motion/react';
+import React,{useEffect,useState} from 'react';
+import {useNavigate,useParams} from 'react-router-dom';
+import {ArrowLeft,CheckCircle,Download,FileCheck,FileText,MessageSquare,Send,ShieldCheck,Upload,XCircle} from 'lucide-react';
+import {useAuth} from '../contexts/AuthContext';
+import {supabase} from '../lib/supabase';
 import ProjectChat from '../components/ProjectChat';
-
-export default function ProjectWorkspace() {
-  const { id } = useParams();
-  const { user, userData } = useAuth();
-  const navigate = useNavigate();
-  
-  const [project, setProject] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Specialist states
-  const [driveLink, setDriveLink] = useState('');
-  const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Student states
-  const [revisionNotes, setRevisionNotes] = useState('');
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
-  useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        if (!id) return;
-        const docRef = doc(db, 'projects', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProject({ id: docSnap.id, ...docSnap.data() });
-        }
-      } catch (err) {
-        console.error("Error fetching project:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProject();
-  }, [id]);
-
-  const handleSubmitWork = async () => {
-    if (!driveLink || !project || !id) return;
-    setSubmitting(true);
-    try {
-      const projectRef = doc(db, 'projects', id);
-      await updateDoc(projectRef, {
-        status: 'EDITOR_REVIEWING',
-        driveLink,
-        specialistNotes: notes,
-        submittedAt: serverTimestamp()
-      });
-      // Refresh local state
-      setProject({ ...project, status: 'EDITOR_REVIEWING', driveLink, specialistNotes: notes });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleStudentAccept = async () => {
-    if (!project || !id) return;
-    try {
-      const projectRef = doc(db, 'projects', id);
-      await updateDoc(projectRef, {
-        status: 'COMPLETED',
-        completedAt: serverTimestamp()
-      });
-      setProject({ ...project, status: 'COMPLETED' });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleStudentRevision = async () => {
-    if (!project || !id || !revisionNotes) return;
-    try {
-      const projectRef = doc(db, 'projects', id);
-      await updateDoc(projectRef, {
-        status: 'EDITOR_REVIEWING', // Goes back to Editor first to manage the revision
-        revisionNotes: revisionNotes,
-        revisionRequestedAt: serverTimestamp()
-      });
-      setProject({ ...project, status: 'EDITOR_REVIEWING', revisionNotes });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading workspace...</div>;
-  if (!project) return <div className="p-8 text-center text-red-500">Project not found.</div>;
-
-  const isStudent = user?.uid === project.studentId;
-  const isSpecialist = user?.uid === project.specialistId;
-  const isEditor = userData?.role === 'editor'; // Future proofing
-
-  // Format status for display
-  const displayStatus = project.status.replace(/_/g, ' ');
-  const spec = project.specification || {};
-
-  return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:py-8">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-      </button>
-      
-      <header className="mb-6 md:mb-8 border-b border-border pb-6">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-          <div>
-            <span className="mono-label text-primary flex items-center gap-2">
-              Workspace <span className="text-muted-foreground hidden md:inline">• ID: {project.id.slice(0,8)}</span>
-            </span>
-            <h1 className="text-2xl md:text-3xl font-bold mt-2">{project.title}</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-md font-bold uppercase tracking-wider">
-              {displayStatus}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
-        
-        {/* Main Action Area */}
-        <div className="xl:col-span-2 flex flex-col gap-6">
-          
-          {/* SPECIALIST VIEW: Submit Work */}
-          {isSpecialist && project.status === 'PAYMENT_CONFIRMED' && (
-            <div className="bento-card p-6 md:p-8 border-primary/30 shadow-lg shadow-primary/5">
-              <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
-                <Upload className="w-5 h-5 text-primary" />
-                Submit Completed Work
-              </h2>
-              <p className="text-muted-foreground text-sm mb-6">
-                Paste the Google Drive link to your finalized document. Ensure sharing is set to "Anyone with the link can comment".
-              </p>
-              
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Google Drive URL</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <LinkIcon className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <input
-                      type="url"
-                      value={driveLink}
-                      onChange={(e) => setDriveLink(e.target.value)}
-                      placeholder="https://docs.google.com/document/d/..."
-                      className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:border-primary transition-colors"
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Notes for Editor (Optional)</label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Mention any specific areas you want the QA editor to focus on..."
-                    className="w-full p-4 bg-background border border-border rounded-lg focus:outline-none focus:border-primary transition-colors min-h-[100px] resize-y"
-                  />
-                </div>
-                <button
-                  onClick={handleSubmitWork}
-                  disabled={!driveLink || submitting}
-                  className="btn-primary w-full py-4 flex items-center justify-center gap-2 mt-2 disabled:opacity-50 text-base"
-                >
-                  {submitting ? 'Submitting...' : 'Submit to Quality Assurance'}
-                  {!submitting && <Send className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* SPECIALIST VIEW: Waiting for Editor */}
-          {isSpecialist && project.status === 'EDITOR_REVIEWING' && (
-            <div className="bento-card p-8 flex flex-col items-center justify-center text-center border-yellow-500/20 bg-yellow-500/5">
-              <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4">
-                <Clock className="w-8 h-8 text-yellow-500" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">In Quality Assurance</h3>
-              <p className="text-muted-foreground max-w-md">
-                Your work has been submitted and is currently being reviewed by a Finalyzed Editor. You will be notified if revisions are required.
-              </p>
-            </div>
-          )}
-
-          {/* STUDENT VIEW: Waiting for Specialist/Editor */}
-          {isStudent && ['PAYMENT_CONFIRMED', 'EDITOR_REVIEWING'].includes(project.status) && (
-            <div className="bento-card p-8 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 relative overflow-hidden">
-                <motion.div 
-                  animate={{ rotate: 360 }} 
-                  transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-                  className="absolute inset-0 border-2 border-primary border-t-transparent rounded-full opacity-50"
-                />
-                <Clock className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Work in Progress</h3>
-              <p className="text-muted-foreground max-w-md">
-                {project.status === 'PAYMENT_CONFIRMED' 
-                  ? "Your specialist is actively working on your project." 
-                  : "Your project is currently undergoing expert Quality Assurance."}
-              </p>
-              <div className="mt-8 w-full max-w-md bg-muted rounded-full h-2 overflow-hidden">
-                <motion.div 
-                  initial={{ width: "20%" }}
-                  animate={{ width: project.status === 'EDITOR_REVIEWING' ? "75%" : "40%" }}
-                  className="bg-primary h-full rounded-full"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* STUDENT VIEW: Work Delivered */}
-          {isStudent && ['AVAILABLE_TO_STUDENT', 'COMPLETED'].includes(project.status) && (
-            <div className="flex flex-col gap-6">
-              <div className="bento-card p-6 md:p-8 border-green-500/30 bg-green-500/5 shadow-lg shadow-green-500/5">
-                <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold flex items-center gap-2 mb-2 text-green-500">
-                      <FileCheck className="w-6 h-6" />
-                      Project Delivered
-                    </h2>
-                    <p className="text-muted-foreground text-sm">
-                      Your project has passed QA and is ready for your review.
-                    </p>
-                  </div>
-                  <a 
-                    href={project.driveLink} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="btn-primary bg-green-600 hover:bg-green-700 w-full md:w-auto px-8 py-3 flex items-center justify-center gap-2"
-                  >
-                    <Download className="w-5 h-5" /> Access Document
-                  </a>
-                </div>
-              </div>
-
-              {project.status === 'AVAILABLE_TO_STUDENT' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bento-card p-6">
-                    <h3 className="font-bold mb-2">Approve Project</h3>
-                    <p className="text-xs text-muted-foreground mb-4">Accept the delivery to release funds and close the project.</p>
-                    <button onClick={handleStudentAccept} className="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary-light transition-colors">
-                      Accept Delivery
-                    </button>
-                  </div>
-                  <div className="bento-card p-6 border-red-500/20">
-                    <h3 className="font-bold mb-2">Request Revision</h3>
-                    <p className="text-xs text-muted-foreground mb-4">Request specific changes (subject to remaining revisions).</p>
-                    <textarea 
-                      value={revisionNotes}
-                      onChange={(e) => setRevisionNotes(e.target.value)}
-                      placeholder="What needs changing?"
-                      className="w-full p-3 text-sm bg-background border border-border rounded-lg mb-3 h-20 resize-none"
-                    />
-                    <button 
-                      onClick={handleStudentRevision}
-                      disabled={!revisionNotes}
-                      className="w-full py-2 bg-red-500/10 text-red-500 rounded-lg font-bold hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                    >
-                      Submit Revision
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* COMPLETED STATE */}
-          {project.status === 'COMPLETED' && (
-            <div className="bento-card p-6 bg-primary/5 border-primary/20 flex items-center gap-4">
-              <CheckCircle className="w-8 h-8 text-primary" />
-              <div>
-                <h3 className="font-bold">Project Completed Successfully</h3>
-                <p className="text-sm text-muted-foreground">This project is closed and funds have been released.</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar details */}
-        <div className="flex flex-col gap-6">
-          <div className="bento-card p-6">
-            <h3 className="font-bold mb-4 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" />
-              Specification Snapshot
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold block mb-1">Project Type</span>
-                <p className="font-medium text-sm px-3 py-2 bg-muted rounded-md">{spec.projectType || 'Standard Academic'}</p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold block mb-1">Target Pages / Length</span>
-                <p className="font-medium text-sm px-3 py-2 bg-muted rounded-md">{spec.targetPages || spec.length || 'Not Specified'}</p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold block mb-1">Citation Style</span>
-                <p className="font-medium text-sm px-3 py-2 bg-muted rounded-md">{spec.citationStyle || 'Standard'}</p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold block mb-1">Plan Level</span>
-                <p className="font-medium text-sm px-3 py-2 bg-muted rounded-md capitalize text-primary">{project.plan || 'Standard'}</p>
-              </div>
-            </div>
-            <button className="w-full mt-6 py-2 border border-border rounded-md text-sm font-medium hover:bg-muted transition-colors">
-              View Full Specification
-            </button>
-          </div>
-
-          {isChatOpen ? (
-            <ProjectChat projectId={id!} onClose={() => setIsChatOpen(false)} />
-          ) : (
-            <div className="bento-card p-6 border-primary/20 bg-primary/5">
-              <h3 className="font-bold mb-2 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-primary" />
-                Communication
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Need to clarify requirements? Use the workspace chat to talk directly.
-              </p>
-              <button 
-                onClick={() => setIsChatOpen(true)}
-                className="w-full py-2 bg-background border border-primary/30 rounded-md text-sm font-medium hover:border-primary transition-colors text-primary flex items-center justify-center gap-2"
-              >
-                <MessageSquare className="w-4 h-4" /> Open Chat
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+type Project={id:string;student_id:string;writer_id:string|null;editor_id:string|null;specification_id:string;title:string;plan:string;status:string;price_ngn:number;revision_limit:number;revisions_used:number;deadline_at:string|null;created_at:string;};
+type FileRow={id:string;drive_url:string;file_type:string;version:number;is_customer_visible:boolean;created_at:string};
+type QA={id:string;decision:string;feedback:string|null;created_at:string;decided_at:string|null};
+export default function ProjectWorkspace(){
+ const {id}=useParams(); const {user,userData}=useAuth(); const navigate=useNavigate();
+ const [project,setProject]=useState<Project|null>(null),[file,setFile]=useState<FileRow|null>(null),[qa,setQa]=useState<QA|null>(null),[loading,setLoading]=useState(true);
+ const [driveLink,setDriveLink]=useState(''),[qaFeedback,setQaFeedback]=useState(''),[revisionNotes,setRevisionNotes]=useState(''),[busy,setBusy]=useState(false),[chat,setChat]=useState(false),[error,setError]=useState('');
+ const load=async()=>{if(!id)return;setLoading(true);try{const {data:p,error:pe}=await supabase.from('projects').select('*').eq('id',id).maybeSingle();if(pe)throw pe;if(!p)throw new Error('Project not found.');setProject(p);
+ const {data:files}=await supabase.from('project_files').select('*').eq('project_id',id).order('version',{ascending:false}).order('created_at',{ascending:false}).limit(10);setFile(((files||[]).find((f:any)=>f.is_customer_visible)||(files||[])[0])||null);
+ const {data:q}=await supabase.from('qa_reviews').select('*').eq('project_id',id).order('created_at',{ascending:false}).limit(1).maybeSingle();setQa(q||null);
+ }catch(e){setError(e instanceof Error?e.message:'Unable to load workspace.');}finally{setLoading(false);}};
+ useEffect(()=>{void load();},[id]);
+ const call=async(fn:string,args:Record<string,unknown>)=>{setBusy(true);setError('');try{const {error:e}=await supabase.rpc(fn,args);if(e)throw e;await load();}catch(e){setError(e instanceof Error?e.message:'Action failed.');}finally{setBusy(false);}};
+ const submit=()=>id&&driveLink.trim()&&call('submit_project_for_editor',{p_project_id:id,p_drive_url:driveLink.trim(),p_file_type:'docx'}).then(()=>setDriveLink(''));
+ const approve=()=>id&&call('approve_project_delivery',{p_project_id:id});
+ const revision=()=>id&&revisionNotes.trim()&&call('request_project_revision',{p_project_id:id,p_request_text:revisionNotes.trim()}).then(()=>setRevisionNotes(''));
+ const decide=(d:'approved'|'correction_required')=>id&&call('editor_decide_qa',{p_project_id:id,p_decision:d,p_feedback:qaFeedback.trim()||null}).then(()=>setQaFeedback(''));
+ if(loading)return <div className="p-8 text-center text-muted-foreground">Loading workspace…</div>;
+ if(!project)return <div className="p-8 text-center text-red-500">{error||'Project not found.'}</div>;
+ const isStudent=user?.id===project.student_id,isWriter=user?.id===project.writer_id,isEditor=userData?.role==='editor'&&user?.id===project.editor_id;
+ const canRevision=isStudent&&['delivered','editor_approved'].includes(project.status)&&project.revisions_used<project.revision_limit;
+ return <div className="w-full max-w-6xl mx-auto px-4 py-6 md:py-8">
+ <button onClick={()=>navigate(-1)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"><ArrowLeft className="w-4 h-4"/>Back</button>
+ {error&&<div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500">{error}</div>}
+ <header className="mb-7 border-b border-border pb-6 flex flex-col md:flex-row md:justify-between gap-4"><div><span className="mono-label text-primary">PROJECT WORKSPACE</span><h1 className="text-2xl md:text-3xl font-bold mt-2">{project.title}</h1><p className="text-sm text-muted-foreground mt-2">#{project.id.slice(0,8)} · {project.plan} plan</p></div><span className="text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-bold uppercase">{project.status.replace(/_/g,' ')}</span></header>
+ <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8"><main className="xl:col-span-2 space-y-6">
+ {isWriter&&project.status==='assigned'&&<ActionCard title="Accept Project" text="Accept this paid assignment to begin the delivery window." button="Accept Project" onClick={()=>call('writer_accept_project',{p_project_id:id!})}/>}
+ {isWriter&&['paid','assigned','in_progress','revision_in_progress'].includes(project.status)&&<div className="bento-card p-6 md:p-8"><h2 className="text-xl font-bold flex items-center gap-2 mb-2"><Upload className="w-5 h-5 text-primary"/>Submit Work for QA</h2><p className="text-sm text-muted-foreground mb-5">Submit the Google Drive link when the PDF/DOCX is ready for Finalyzed Editor review.</p><input value={driveLink} onChange={e=>setDriveLink(e.target.value)} placeholder="https://drive.google.com/…" className="form-input mb-3"/><button disabled={busy||!driveLink.trim()} onClick={submit} className="btn-primary w-full py-3 disabled:opacity-50"><Send className="w-4 h-4 inline mr-2"/>{busy?'Submitting…':'Submit to Editor QA'}</button></div>}
+ {isEditor&&project.status==='submitted_for_review'&&<div className="bento-card p-6 md:p-8 border-primary/20"><h2 className="text-xl font-bold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-primary"/>Editor Quality Assurance</h2><p className="text-sm text-muted-foreground mt-2 mb-5">Check the submission against the stored project specification.</p>{file?.drive_url&&<a className="btn-secondary inline-flex items-center gap-2 mb-5" href={file.drive_url} target="_blank" rel="noreferrer"><Download className="w-4 h-4"/>Open submitted document</a>}<textarea value={qaFeedback} onChange={e=>setQaFeedback(e.target.value)} placeholder="QA findings or correction instructions" className="form-input min-h-28 mb-4"/><div className="grid sm:grid-cols-2 gap-3"><button disabled={busy} onClick={()=>decide('correction_required')} className="py-3 rounded-lg border border-red-500/30 text-red-500 font-bold"><XCircle className="w-4 h-4 inline mr-2"/>Correction Required</button><button disabled={busy} onClick={()=>decide('approved')} className="btn-primary py-3"><CheckCircle className="w-4 h-4 inline mr-2"/>Approve for Student</button></div></div>}
+ {isWriter&&project.status==='editor_correction_required'&&<div className="bento-card p-6 border-red-500/20 bg-red-500/5"><h2 className="font-bold text-lg">Editor requested corrections</h2><p className="text-sm text-muted-foreground mt-2">{qa?.feedback||'Review the latest QA feedback and resubmit the corrected document.'}</p></div>}
+ {isStudent&&['delivered','editor_approved'].includes(project.status)&&<div className="bento-card p-6 md:p-8 border-primary/20"><h2 className="text-xl font-bold flex items-center gap-2"><FileCheck className="w-6 h-6 text-primary"/>Your project is ready</h2><p className="text-sm text-muted-foreground mt-2">The submission has passed Finalyzed QA and is available for your review.</p>{file?.drive_url&&<a href={file.drive_url} target="_blank" rel="noreferrer" className="btn-primary mt-5 inline-flex items-center gap-2"><Download className="w-5 h-5"/>Open / Download Document</a>}<div className="grid md:grid-cols-2 gap-4 mt-6"><div className="bento-card p-5"><b>Revision allowance</b><p className="text-sm text-muted-foreground mt-1">{project.revisions_used} of {project.revision_limit} used</p></div><div className="bento-card p-5"><b>Delivery</b><p className="text-sm text-muted-foreground mt-1">Review the files before accepting.</p></div></div><div className="grid md:grid-cols-2 gap-4 mt-5"><button disabled={busy} onClick={approve} className="btn-primary py-3">Accept Delivery</button><div><textarea disabled={!canRevision||busy} value={revisionNotes} onChange={e=>setRevisionNotes(e.target.value)} placeholder={canRevision?'Describe required changes ('+(project.revision_limit-project.revisions_used)+' remaining)':'Included revisions exhausted'} className="form-input min-h-20 mb-2"/><button disabled={!canRevision||busy||!revisionNotes.trim()} onClick={revision} className="w-full py-3 rounded-lg border border-primary/30 text-primary font-bold">Request Revision</button></div></div></div>}
+ {project.status==='completed'&&<div className="bento-card p-7 flex items-center gap-4"><CheckCircle className="w-9 h-9 text-primary"/><div><h2 className="font-bold text-lg">Project completed</h2><p className="text-sm text-muted-foreground">Delivery accepted and the project financial lifecycle has closed.</p></div></div>}
+ </main><aside className="space-y-6"><div className="bento-card p-6"><h3 className="font-bold flex items-center gap-2"><FileText className="w-4 h-4 text-primary"/>Project details</h3><div className="mt-4 space-y-3 text-sm"><Row label="Plan" value={project.plan}/><Row label="Price" value={'₦'+Number(project.price_ngn).toLocaleString('en-NG')}/><Row label="Revisions" value={project.revisions_used+'/'+project.revision_limit}/><Row label="Deadline" value={project.deadline_at?new Date(project.deadline_at).toLocaleString('en-NG'):'Not assigned'}/></div></div>{qa&&<div className="bento-card p-6"><h3 className="font-bold">Latest QA</h3><p className="text-sm mt-2 capitalize">{qa.decision.replace(/_/g,' ')}</p>{qa.feedback&&<p className="text-sm text-muted-foreground mt-2">{qa.feedback}</p>}</div>}{chat?<ProjectChat projectId={id!} onClose={()=>setChat(false)}/>:<div className="bento-card p-6"><h3 className="font-bold flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary"/>Communication</h3><p className="text-sm text-muted-foreground mt-2 mb-4">Keep project communication inside the workspace.</p><button onClick={()=>setChat(true)} className="btn-secondary w-full">Open Chat</button></div>}</aside></div></div>;
 }
+function Row({label,value}:{label:string;value:string}){return <div className="flex justify-between gap-4"><span className="text-muted-foreground">{label}</span><span className="font-semibold capitalize text-right">{value}</span></div>}
+function ActionCard({title,text,button,onClick}:{title:string;text:string;button:string;onClick:()=>void}){return <div className="bento-card p-7"><CheckCircle className="w-7 h-7 text-primary mb-3"/><h2 className="text-xl font-bold">{title}</h2><p className="text-sm text-muted-foreground mt-2 mb-5">{text}</p><button onClick={onClick} className="btn-primary py-3 px-6">{button}</button></div>}
