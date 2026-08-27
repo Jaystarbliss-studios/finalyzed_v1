@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Star, ShieldCheck, CheckCircle, Clock, BookOpen, ChevronRight } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/supabase';
+import { doc, getDoc } from '../lib/supabaseCompat';
 
 interface Specialist {
   id: string;
