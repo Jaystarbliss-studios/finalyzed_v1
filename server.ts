@@ -60,7 +60,7 @@ async function startServer() {
       const user = await requireAuth(req);
       const { data: project, error: projectError } = await client
         .from('projects').select('id,student_id,title,plan,status,price_ngn')
-        .eq('id', projectId).maybeSingle<ProjectRow>();
+        .eq('id', projectId).maybeSingle();
       if (projectError) throw projectError;
       if (!project) return res.status(404).json({ error: 'Project not found' });
       if (project.student_id !== user.id) return res.status(403).json({ error: 'You do not own this project' });
