@@ -267,3 +267,31 @@ begin
   return out;
 end; $$;
 grant execute on function public.request_wallet_withdrawal(bigint,bigint,text,text,text) to authenticated;
+
+
+-- Workspace chat is now a first-class Supabase resource.
+create table if not exists public.project_messages(
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  sender_name text,
+  sender_role text,
+  text text not null check (length(trim(text)) between 1 and 5000),
+  created_at timestamptz not null default now()
+);
+create index if not exists project_messages_project_created_idx on public.project_messages(project_id,created_at);
+alter table public.project_messages enable row level security;
+drop policy if exists project_messages_read on public.project_messages;
+drop policy if exists project_messages_insert on public.project_messages;
+create policy project_messages_read on public.project_messages for select to authenticated using (
+  exists(select 1 from public.projects p where p.id=project_messages.project_id and
+    (p.student_id=(select auth.uid()) or p.writer_id=(select auth.uid()) or p.editor_id=(select auth.uid())))
+);
+create policy project_messages_insert on public.project_messages for insert to authenticated with check (
+  (select auth.uid())=sender_id and exists(select 1 from public.projects p where p.id=project_messages.project_id and
+    (p.student_id=(select auth.uid()) or p.writer_id=(select auth.uid()) or p.editor_id=(select auth.uid())))
+);
+do $$ begin
+  alter publication supabase_realtime add table public.project_messages;
+exception when duplicate_object then null; when undefined_object then null;
+end $$;
