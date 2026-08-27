@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Star, Clock, CheckCircle, ArrowRight, ShieldCheck, User, SlidersHorizontal } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { collection, getDocs, query, where } from '../lib/supabaseCompat';
+import { db } from '../lib/supabase';
 
 interface Specialist {
   id: string;
