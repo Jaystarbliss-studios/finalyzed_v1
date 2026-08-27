@@ -334,3 +334,36 @@ create index if not exists idx_wallet_transactions_project on public.wallet_tran
 create index if not exists idx_withdrawals_user on public.withdrawals(user_id);
 create index if not exists idx_project_messages_sender on public.project_messages(sender_id);
 create index if not exists idx_writer_applications_user on public.writer_applications(user_id);
+
+
+-- Explicit function execution boundary: no RPC below is executable anonymously.
+revoke execute on function public.convert_editor_points_to_cash(bigint) from public;
+grant execute on function public.convert_editor_points_to_cash(bigint) to authenticated;
+revoke execute on function public.request_wallet_withdrawal(bigint,bigint,text,text,text) from public;
+grant execute on function public.request_wallet_withdrawal(bigint,bigint,text,text,text) to authenticated;
+revoke execute on function public.complete_onboarding(text,text,text,text,text,text,text,text,text,text,text,text[],text) from public;
+grant execute on function public.complete_onboarding(text,text,text,text,text,text,text,text,text,text,text,text[],text) to authenticated;
+revoke execute on function public.create_project_from_spec(uuid,plan_type,integer,uuid) from public;
+grant execute on function public.create_project_from_spec(uuid,plan_type,integer,uuid) to authenticated;
+revoke execute on function public.create_project_from_specification(uuid,plan_type,integer,uuid) from public;
+grant execute on function public.create_project_from_specification(uuid,plan_type,integer,uuid) to authenticated;
+revoke execute on function public.debit_points(bigint,text,uuid) from public;
+grant execute on function public.debit_points(bigint,text,uuid) to authenticated;
+revoke execute on function public.earn_editor_review_points(uuid,integer) from public;
+grant execute on function public.earn_editor_review_points(uuid,integer) to authenticated;
+revoke execute on function public.editor_decide_qa(uuid,qa_decision,text) from public;
+grant execute on function public.editor_decide_qa(uuid,qa_decision,text) to authenticated;
+revoke execute on function public.mark_project_delivered(uuid) from public;
+grant execute on function public.mark_project_delivered(uuid) to authenticated;
+revoke execute on function public.request_project_revision(uuid,text) from public;
+grant execute on function public.request_project_revision(uuid,text) to authenticated;
+revoke execute on function public.request_project_revision(uuid,text,integer) from public;
+grant execute on function public.request_project_revision(uuid,text,integer) to authenticated;
+revoke execute on function public.submit_project_for_editor(uuid,text,text) from public;
+grant execute on function public.submit_project_for_editor(uuid,text,text) to authenticated;
+revoke execute on function public.submit_project_review(uuid,integer,text) from public;
+grant execute on function public.submit_project_review(uuid,integer,text) to authenticated;
+revoke execute on function public.writer_accept_project(uuid) from public;
+grant execute on function public.writer_accept_project(uuid) to authenticated;
+revoke execute on function public.approve_project_delivery(uuid) from public;
+grant execute on function public.approve_project_delivery(uuid) to authenticated;
