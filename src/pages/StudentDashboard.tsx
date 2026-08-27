@@ -3,8 +3,8 @@ import { motion } from 'motion/react';
 import { Plus, BookOpen, Clock, Zap, CheckCircle, Shield, ArrowRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../lib/supabase';
+import { collection, query, where, getDocs, orderBy } from '../lib/supabaseCompat';
 
 export default function StudentDashboard() {
   const { user, userData } = useAuth();
