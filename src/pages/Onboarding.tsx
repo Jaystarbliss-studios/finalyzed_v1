@@ -29,20 +29,23 @@ export default function Onboarding() {
     event.preventDefault(); if (!role) return; setSaving(true); setError('');
     try {
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Finalyzed User';
-      const { error: profileError } = await supabase.from('profiles').upsert({ id:user.id, full_name:fullName, avatar_url:user.user_metadata?.avatar_url || user.user_metadata?.picture || null, role:'student', account_status:'approved' }, { onConflict:'id' });
-      if (profileError) throw profileError;
-
-      if (role === 'student') {
-        const { error } = await supabase.from('student_profiles').upsert({ user_id:user.id, phone:formData.phone.trim(), institution:formData.institution.trim(), faculty:formData.faculty.trim(), department:formData.department.trim(), degree:formData.degree.trim(), matric_number:formData.matricNumber.trim(), graduation_year:formData.graduationYear.trim() }, { onConflict:'user_id' });
-        if (error) throw error;
-      } else {
-        const table = role === 'specialist' ? 'writer_applications' : 'editor_applications';
-        const payload = role === 'specialist'
-          ? { user_id:user.id, status:'pending' as const, bio:formData.bio.trim(), specialties:formData.expertise.split(',').map(v=>v.trim()).filter(Boolean), academic_qualifications:formData.degree.trim(), portfolio_url:formData.portfolio.trim() || null }
-          : { user_id:user.id, status:'pending' as const, bio:formData.bio.trim(), specialties:formData.expertise.split(',').map(v=>v.trim()).filter(Boolean), qualifications:formData.degree.trim() };
-        const { error } = await supabase.from(table).upsert(payload, { onConflict:'user_id' });
-        if (error) throw error;
-      }
+      const specialties = formData.expertise.split(',').map(v => v.trim()).filter(Boolean);
+      const { error: onboardingError } = await supabase.rpc('complete_onboarding', {
+        p_role: role === 'specialist' ? 'writer' : role,
+        p_full_name: fullName,
+        p_avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+        p_phone: formData.phone.trim(),
+        p_institution: formData.institution.trim(),
+        p_faculty: formData.faculty.trim(),
+        p_department: formData.department.trim(),
+        p_degree: formData.degree.trim(),
+        p_matric_number: formData.matricNumber.trim(),
+        p_graduation_year: formData.graduationYear.trim(),
+        p_bio: formData.bio.trim(),
+        p_specialties: specialties,
+        p_portfolio_url: formData.portfolio.trim(),
+      });
+      if (onboardingError) throw onboardingError;
       await refreshUserData();
       navigate('/dashboard', { replace:true, state:{ onboardingComplete:true, pendingCapability:role !== 'student' ? role : undefined } });
     } catch (err:any) { console.error('Finalyzed onboarding failed:',err); setError(err?.message || 'We could not complete your registration. Please try again.'); }
