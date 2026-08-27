@@ -28,10 +28,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const { user, userData, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); const [profileOpen,setProfileOpen]=useState(false); const [deleteOpen,setDeleteOpen]=useState(false); const [deleteText,setDeleteText]=useState(''); const [deleteBusy,setDeleteBusy]=useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-  const handleLogout = async () => {
+  const handleDeleteAccount = async () => { if(deleteText.trim().toLowerCase()!=='delete') return; setDeleteBusy(true); const {error}=await supabase.rpc('delete_my_account',{p_confirmation:deleteText}); setDeleteBusy(false); if(error){alert(error.message);return;} await supabase.auth.signOut(); navigate('/'); };\n\n  const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
   };
@@ -273,15 +273,32 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
             <div className="flex items-center gap-3">
               <NotificationBell userId={user.id} />
-              <div className="text-right">
-                <p className="text-sm font-bold capitalize leading-tight">{userData?.name || user.email?.split('@')[0]}</p>
-                <p className="text-xs text-muted-foreground capitalize leading-tight">{isAdmin ? 'Administrator' : userData?.role}</p>
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold capitalize leading-tight">{userData?.username ? '@'+userData.username : userData?.name || user.email?.split('@')[0]}</p>
+                <p className="text-xs text-muted-foreground capitalize leading-tight">{isAdmin ? 'Administrator' : userData?.role==='editor' ? 'Project Manager' : userData?.role==='writer' ? 'Finalyzed Writer' : 'Student'}</p>
               </div>
-              <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold uppercase">
-                {(userData?.name || user.email || 'U').charAt(0)}
+              <div className="relative">
+                <button onClick={()=>setProfileOpen(v=>!v)} className="w-9 h-9 rounded-full overflow-hidden bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold uppercase" aria-label="Open profile menu">
+                  {userData?.avatarUrl ? <img src={userData.avatarUrl} alt="" className="w-full h-full object-cover"/> : (userData?.username || userData?.name || user.email || 'U').charAt(0)}
+                </button>
+                {profileOpen&&<div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-border bg-background shadow-xl p-2">
+                  <Link to="/dashboard" onClick={()=>setProfileOpen(false)} className="block px-3 py-2 rounded-xl hover:bg-muted text-sm font-medium">Profile & Dashboard</Link>
+                  <button onClick={()=>setDeleteOpen(true)} className="w-full text-left px-3 py-2 rounded-xl hover:bg-red-500/10 text-sm text-red-500">Delete account</button>
+                  <button onClick={()=>void handleLogout()} className="w-full text-left px-3 py-2 rounded-xl hover:bg-muted text-sm">Log out</button>
+                </div>}
               </div>
             </div>
         </header>
+
+{deleteOpen&&<div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+  <div className="w-full max-w-md rounded-2xl bg-background border border-border shadow-2xl p-6">
+    <h2 className="text-xl font-bold text-red-500">Delete your Finalyzed account?</h2>
+    <p className="text-sm text-muted-foreground mt-3">This permanently removes your account and associated profile data. This action cannot be undone.</p>
+    <p className="text-sm font-semibold mt-5">Type <span className="font-mono">delete</span> to confirm.</p>
+    <input value={deleteText} onChange={e=>setDeleteText(e.target.value)} className="form-input mt-2" placeholder="delete" autoFocus/>
+    <div className="flex gap-3 mt-5"><button onClick={()=>{setDeleteOpen(false);setDeleteText('')}} className="btn-secondary flex-1 py-3">Cancel</button><button disabled={deleteBusy||deleteText.trim().toLowerCase()!=='delete'} onClick={()=>void handleDeleteAccount()} className="flex-1 py-3 rounded-xl bg-red-600 text-white disabled:opacity-40">{deleteBusy?'Deleting…':'Delete permanently'}</button></div>
+  </div>
+</div>}
 
         {/* SCROLLABLE MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
