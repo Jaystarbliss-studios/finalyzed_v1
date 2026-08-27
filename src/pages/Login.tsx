@@ -14,7 +14,7 @@ export default function Login() {
     try {
       // OAuth is intentionally completed before role routing. A first-time Google
       // account has no Finalyzed profile yet and must complete onboarding.
-      const redirectTo = `${window.location.origin}/auth/callback`;
+      const redirectTo = `${window.location.origin}/onboarding`;
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo },
