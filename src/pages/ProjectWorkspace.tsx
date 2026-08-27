@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, Link as LinkIcon, Send, Clock, CheckCircle, Upload, MessageSquare, AlertCircle, FileCheck, ArrowLeft, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/supabase';
+import { doc, getDoc, updateDoc, serverTimestamp } from '../lib/supabaseCompat';
 import { motion, AnimatePresence } from 'motion/react';
 import ProjectChat from '../components/ProjectChat';
 
