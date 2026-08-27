@@ -295,3 +295,42 @@ do $$ begin
   alter publication supabase_realtime add table public.project_messages;
 exception when duplicate_object then null; when undefined_object then null;
 end $$;
+
+
+-- Remove legacy duplicate permissive policies and add covering indexes for FK-heavy paths.
+drop policy if exists editor_application_self_read on public.editor_applications;
+drop policy if exists editor_application_self_insert on public.editor_applications;
+drop policy if exists writer_application_self_read on public.writer_applications;
+drop policy if exists writer_application_self_insert on public.writer_applications;
+drop policy if exists points_tx_self on public.point_transactions;
+drop policy if exists projects_editor on public.projects;
+drop policy if exists projects_student on public.projects;
+drop policy if exists projects_writer on public.projects;
+create policy projects_participant on public.projects for select to authenticated using (
+  (select auth.uid())=student_id or (select auth.uid())=writer_id or (select auth.uid())=editor_id
+);
+create index if not exists idx_audit_logs_actor on public.audit_logs(actor_id);
+create index if not exists idx_editor_applications_user on public.editor_applications(user_id);
+create index if not exists idx_editor_applications_reviewed_by on public.editor_applications(reviewed_by);
+create index if not exists idx_payments_project on public.payments(project_id);
+create index if not exists idx_payments_student on public.payments(student_id);
+create index if not exists idx_point_transactions_project on public.point_transactions(project_id);
+create index if not exists idx_project_assignments_project on public.project_assignments(project_id);
+create index if not exists idx_project_escrow_writer on public.project_escrow(writer_id);
+create index if not exists idx_project_files_project on public.project_files(project_id);
+create index if not exists idx_project_files_uploaded_by on public.project_files(uploaded_by);
+create index if not exists idx_project_revisions_project on public.project_revisions(project_id);
+create index if not exists idx_project_revisions_requested_by on public.project_revisions(requested_by);
+create index if not exists idx_project_revisions_accepted_by on public.project_revisions(accepted_by);
+create index if not exists idx_project_specification_versions_created_by on public.project_specification_versions(created_by);
+create index if not exists idx_project_specifications_institution on public.project_specifications(institution_id);
+create index if not exists idx_project_specifications_department on public.project_specifications(department_id);
+create index if not exists idx_projects_specification on public.projects(specification_id);
+create index if not exists idx_qa_reviews_editor on public.qa_reviews(editor_id);
+create index if not exists idx_qa_reviews_submission_file on public.qa_reviews(submission_file_id);
+create index if not exists idx_reviews_reviewer on public.reviews(reviewer_id);
+create index if not exists idx_reviews_writer on public.reviews(writer_id);
+create index if not exists idx_wallet_transactions_project on public.wallet_transactions(project_id);
+create index if not exists idx_withdrawals_user on public.withdrawals(user_id);
+create index if not exists idx_project_messages_sender on public.project_messages(sender_id);
+create index if not exists idx_writer_applications_user on public.writer_applications(user_id);
