@@ -39,11 +39,21 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading Finalyzed...</div>;
   }
 
-  const SUPER_ADMIN_EMAILS = ['johnrufai242@gmail.com', 'rufaijohnny@gmail.com'];
-  const isAdmin = userData?.role === 'admin' || (user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
+  const isAdmin = userData?.role === 'admin';
   const role = userData?.role;
 
   const isStrictlyPublic = ['/', '/login', '/how-it-works'].includes(location.pathname);
+  const isOnboarding = location.pathname === '/onboarding';
+  const isIncompleteRegistration = Boolean(user && !isAdmin && userData && !userData.onboardingComplete);
+
+  if (isIncompleteRegistration && !isOnboarding) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (isOnboarding) {
+    return <div className="min-h-[100dvh] overflow-y-auto bg-background font-sans"><main className="w-full">{children}</main></div>;
+  }
+
   const useAppLayout = user && !isStrictlyPublic;
 
   if (!useAppLayout) {
