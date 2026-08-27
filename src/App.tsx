@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
+import NotificationBell from './components/NotificationBell';
 
 import Home from './pages/Home';
 import DashboardDispatcher from './pages/DashboardDispatcher';
@@ -39,7 +40,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   }
 
   const SUPER_ADMIN_EMAILS = ['johnrufai242@gmail.com', 'rufaijohnny@gmail.com'];
-  const isAdmin = user?.email && SUPER_ADMIN_EMAILS.includes(user.email);
+  const isAdmin = userData?.role === 'admin' || (user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
   const role = userData?.role;
 
   const isStrictlyPublic = ['/', '/login', '/how-it-works'].includes(location.pathname);
@@ -259,7 +260,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                Welcome back, <span className="text-foreground capitalize">{userData?.name?.split(' ')[0] || user.email?.split('@')[0]}</span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <NotificationBell userId={user.id} />
               <div className="text-right">
                 <p className="text-sm font-bold capitalize leading-tight">{userData?.name || user.email?.split('@')[0]}</p>
                 <p className="text-xs text-muted-foreground capitalize leading-tight">{isAdmin ? 'Administrator' : userData?.role}</p>

@@ -1,0 +1,19 @@
+name: Finalyzed CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, finalyzed-core-completion]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile=false
+      - run: bun run lint
+      - run: bun run build

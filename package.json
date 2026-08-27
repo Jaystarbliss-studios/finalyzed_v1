@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
@@ -27,7 +27,8 @@
     "react-router-dom": "^7.18.2",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.6.0",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "@netlify/functions": "^4.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

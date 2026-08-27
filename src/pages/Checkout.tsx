@@ -39,6 +39,7 @@ export default function Checkout() {
     reference: `FZ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     email: user?.email || '',
     amount: totalAmount * 100,
+    metadata: { projectId: '', studentId: user?.id || '' },
     publicKey: (import.meta as any).env.VITE_PAYSTACK_PUBLIC_KEY || '',
   };
 
@@ -87,6 +88,8 @@ export default function Checkout() {
         .select('id')
         .eq('student_id', user.id)
         .eq('confirmed', true)
+        .order('confirmed_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (specificationError) throw specificationError;
       if (!specification) throw new Error('Please confirm your project specification before payment.');
@@ -99,6 +102,7 @@ export default function Checkout() {
       );
 
       initializePayment({
+        metadata: { projectId: project.id, studentId: user.id },
         onSuccess: (ref) => onSuccess(ref, project.id),
         onClose: () => setProcessing(false),
       });

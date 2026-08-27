@@ -14,7 +14,7 @@ export default function Login() {
     try {
       // OAuth is intentionally completed before role routing. A first-time Google
       // account has no Finalyzed profile yet and must complete onboarding.
-      const redirectTo = `${window.location.origin}/onboarding`;
+      const redirectTo = `${window.location.origin}/dashboard`;
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo },
@@ -32,7 +32,7 @@ export default function Login() {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-5"><ShieldCheck className="w-8 h-8 text-primary" /></div>
         <p className="text-xs font-bold tracking-[0.22em] text-primary uppercase mb-3">Secure access</p>
         <h1 className="text-3xl md:text-4xl font-light tracking-tight text-foreground">Welcome to <span className="font-bold">FINALYZED</span></h1>
-        <p className="text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed">Sign in securely with Google. New to Finalyzed? We’ll guide you through the right registration path.</p>
+        <p className="text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed">Sign in securely with Google. New accounts choose Student, Project Writer, or Editor after authentication. Administrators bypass onboarding completely.</p>
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="bento-card p-6 md:p-8">
         {error && <div role="alert" className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-xl text-sm mb-5">{error}</div>}

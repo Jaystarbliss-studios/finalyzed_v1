@@ -1,0 +1,12 @@
+import React,{useEffect,useState} from 'react';
+import {Bell,Check} from 'lucide-react';
+import {supabase} from '../lib/supabase';
+
+export default function NotificationBell({userId}:{userId:string}){
+ const [items,setItems]=useState<any[]>([]),[open,setOpen]=useState(false);
+ const load=async()=>{const {data}=await supabase.from('notifications').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(12);setItems(data||[])};
+ useEffect(()=>{void load();const channel=supabase.channel('finalyzed-notifications-'+userId).on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:'user_id=eq.'+userId},()=>void load()).subscribe();return()=>{void supabase.removeChannel(channel)}},[userId]);
+ const unread=items.filter(x=>!x.read_at).length;
+ const mark=async(id:string)=>{await supabase.from('notifications').update({read_at:new Date().toISOString()}).eq('id',id).eq('user_id',userId);await load()};
+ return <div className="relative"><button onClick={()=>setOpen(v=>!v)} className="relative p-2 rounded-xl hover:bg-muted transition-colors" aria-label="Notifications"><Bell className="w-5 h-5"/>{unread>0&&<span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{unread>9?'9+':unread}</span>}</button>{open&&<div className="absolute right-0 top-11 z-50 w-[min(360px,calc(100vw-2rem))] bg-background border border-border rounded-2xl shadow-xl overflow-hidden"><div className="px-4 py-3 border-b border-border flex justify-between"><b>Notifications</b><span className="text-xs text-muted-foreground">{unread} unread</span></div><div className="max-h-96 overflow-y-auto">{items.length===0?<p className="p-6 text-sm text-muted-foreground text-center">You're all caught up.</p>:items.map(n=><button key={n.id} onClick={()=>mark(n.id)} className={'w-full text-left p-4 border-b border-border hover:bg-muted/40 '+(!n.read_at?'bg-primary/5':'')}><div className="flex gap-3"><div className="mt-0.5">{!n.read_at?<span className="block w-2 h-2 rounded-full bg-primary"/>:<Check className="w-4 h-4 text-muted-foreground"/>}</div><div className="min-w-0"><p className="font-semibold text-sm">{n.title}</p>{n.body&&<p className="text-xs text-muted-foreground mt-1">{n.body}</p>}<p className="text-[10px] text-muted-foreground mt-2">{new Date(n.created_at).toLocaleString('en-NG')}</p></div></div></button>)}</div></div>}</div>
+}

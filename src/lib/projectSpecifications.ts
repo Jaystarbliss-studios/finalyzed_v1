@@ -41,29 +41,86 @@ function toRow(specification: Record<string, unknown>, ownerId: string, status: 
   };
 }
 
-export async function saveProjectSpecification(ownerId: string, specification: Record<string, unknown>, status: 'DRAFT' | 'CONFIRMED' = 'DRAFT'): Promise<void> {
-  const { data: existing, error: readError } = await supabase.from('project_specifications').select('id').eq('student_id', ownerId).maybeSingle();
-  if (readError) throw readError;
-  const row = toRow(specification, ownerId, status, existing ? 1 : 1);
+export async function saveProjectSpecification(ownerId: string, specification: Record<string, unknown>, status: 'DRAFT' | 'CONFIRMED' = 'DRAFT'): Promise<string> {
   const institutionName = String(specification.institution ?? '').trim();
   const departmentName = String(specification.department ?? '').trim();
-  if (institutionName) { const { data } = await supabase.from('institutions').select('id').ilike('name', institutionName).limit(1).maybeSingle(); if (data?.id) (row as any).institution_id = data.id; }
-  if (departmentName && (row as any).institution_id) { const { data } = await supabase.from('departments').select('id').eq('institution_id',(row as any).institution_id).ilike('name',departmentName).limit(1).maybeSingle(); if (data?.id) (row as any).department_id = data.id; }
-  const { data: saved, error } = existing
-    ? await supabase.from('project_specifications').update(row).eq('id', existing.id).select('id').single()
-    : await supabase.from('project_specifications').insert(row).select('id').single();
-  if (error) throw error;
-  if (status === 'CONFIRMED' && saved) {
-    const { data: versions, error: versionError } = await supabase.from('project_specification_versions').select('version').eq('specification_id', saved.id).order('version', { ascending: false }).limit(1);
+  const row: any = toRow(specification, ownerId, status, 1);
+
+  if (institutionName) {
+    const { data } = await supabase.from('institutions').select('id').ilike('name', institutionName).limit(1).maybeSingle();
+    if (data?.id) row.institution_id = data.id;
+  }
+  if (departmentName && row.institution_id) {
+    const { data } = await supabase.from('departments').select('id').eq('institution_id', row.institution_id).ilike('name', departmentName).limit(1).maybeSingle();
+    if (data?.id) row.department_id = data.id;
+  }
+
+  // Drafts are editable. Confirmed specifications are immutable commission records;
+  // every confirmation creates a new specification instead of overwriting history.
+  let saved: any = null;
+  if (status === 'DRAFT') {
+    const { data: draft, error: draftError } = await supabase
+      .from('project_specifications')
+      .select('id')
+      .eq('student_id', ownerId)
+      .eq('confirmed', false)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (draftError) throw draftError;
+
+    const result = draft
+      ? await supabase.from('project_specifications').update(row).eq('id', draft.id).select('id').single()
+      : await supabase.from('project_specifications').insert(row).select('id').single();
+    if (result.error) throw result.error;
+    saved = result.data;
+  } else {
+    const result = await supabase.from('project_specifications').insert(row).select('id').single();
+    if (result.error) throw result.error;
+    saved = result.data;
+  }
+
+  if (saved) {
+    const { data: versions, error: versionError } = await supabase
+      .from('project_specification_versions')
+      .select('version')
+      .eq('specification_id', saved.id)
+      .order('version', { ascending: false })
+      .limit(1);
     if (versionError) throw versionError;
+
     const version = (versions?.[0]?.version ?? 0) + 1;
-    const { error: insertError } = await supabase.from('project_specification_versions').insert({ specification_id: saved.id, version, snapshot: specification, created_by: ownerId });
+    const { error: insertError } = await supabase
+      .from('project_specification_versions')
+      .insert({ specification_id: saved.id, version, snapshot: specification, created_by: ownerId });
     if (insertError) throw insertError;
   }
+
+  return saved.id;
 }
 
 export async function loadProjectSpecification(ownerId: string): Promise<ProjectSpecification | null> {
-  const { data, error } = await supabase.from('project_specifications').select('*').eq('student_id', ownerId).maybeSingle();
+  // Prefer the latest editable draft. If there is none, load the latest confirmed
+  // specification so a returning student can inspect their last commission.
+  const { data: draft, error: draftError } = await supabase
+    .from('project_specifications')
+    .select('*')
+    .eq('student_id', ownerId)
+    .eq('confirmed', false)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (draftError) throw draftError;
+  if (draft) return draft as ProjectSpecification;
+
+  const { data, error } = await supabase
+    .from('project_specifications')
+    .select('*')
+    .eq('student_id', ownerId)
+    .eq('confirmed', true)
+    .order('confirmed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
   return data as ProjectSpecification | null;
 }

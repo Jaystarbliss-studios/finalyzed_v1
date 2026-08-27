@@ -1,2 +1,113 @@
-import React,{useEffect,useState} from 'react';import {CheckCircle,ShieldAlert,Users,DollarSign,FileText,UserCheck,XCircle} from 'lucide-react';import {useAuth} from '../contexts/AuthContext';import {supabase} from '../lib/supabase';
-export default function AdminDashboard(){const {user,userData}=useAuth();const [projects,setProjects]=useState<any[]>([]),[selectedWriter,setSelectedWriter]=useState<Record<string,string>>({}),[writers,setWriters]=useState<any[]>([]),[writerApps,setWriterApps]=useState<any[]>([]),[editorApps,setEditorApps]=useState<any[]>([]),[payments,setPayments]=useState<any[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[msg,setMsg]=useState('');const load=async()=>{const [p,w,wa,ea,pay]=await Promise.all([supabase.from('projects').select('*').order('created_at',{ascending:false}),supabase.from('public_profiles').select('*').eq('verified',true).order('rating',{ascending:false}),supabase.from('writer_applications').select('*').eq('status','pending').order('created_at',{ascending:false}),supabase.from('editor_applications').select('*').eq('status','pending').order('created_at',{ascending:false}),supabase.from('payments').select('*').order('created_at',{ascending:false})]);setProjects(p.data||[]);setWriters(w.data||[]);setWriterApps(wa.data||[]);setEditorApps(ea.data||[]);setPayments(pay.data||[]);setLoading(false)};useEffect(()=>{if(user&&userData?.role==='admin')void load()},[user,userData]);if(userData?.role!=='admin')return <div className="p-8 text-center text-red-500">Administrator access required.</div>;if(loading)return <div className="p-8 text-center text-muted-foreground">Loading admin portal…</div>;const active=projects.filter(p=>!['completed','cancelled'].includes(p.status));const revenue=payments.filter(p=>p.status==='completed').reduce((s,p)=>s+Number(p.amount_ngn||0),0);const decide=async(id:string,role:'writer'|'editor',d:'approved'|'rejected')=>{setBusy(true);setMsg('');const {error}=await supabase.rpc('admin_decide_application',{p_application_id:id,p_role:role,p_decision:d});setMsg(error?error.message:'Application updated.');setBusy(false);if(!error)await load()};const assign=async(p:any,writer:string)=>{if(!writer)return;const deadline=new Date(Date.now()+5*86400000).toISOString();setBusy(true);const {error}=await supabase.rpc('assign_writer',{p_project_id:p.id,p_writer_id:writer,p_deadline_at:deadline});setMsg(error?error.message:'Writer assigned with a 5-day deadline.');setBusy(false);if(!error)await load()};return <div className="w-full max-w-7xl mx-auto px-4 py-8 space-y-7"><header><span className="mono-label text-red-500 flex items-center gap-2"><ShieldAlert className="w-4 h-4"/>Super Admin Portal</span><h1 className="text-3xl font-light mt-2">FINALYZED <b>OPERATIONS</b></h1></header>{msg&&<div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm">{msg}</div>}<div className="grid md:grid-cols-4 gap-4"><Metric icon={<DollarSign/>} label="Verified revenue" value={'₦'+revenue.toLocaleString('en-NG')}/><Metric icon={<Users/>} label="Projects" value={String(projects.length)}/><Metric icon={<FileText/>} label="Active projects" value={String(active.length)}/><Metric icon={<UserCheck/>} label="Pending applications" value={String(writerApps.length+editorApps.length)}/></div><section className="grid lg:grid-cols-2 gap-6"><div className="bento-card p-6"><h2 className="font-bold text-lg mb-4">Writer Applications</h2>{writerApps.length===0?<p className="text-sm text-muted-foreground">No pending writer applications.</p>:writerApps.map(a=><div key={a.id} className="border-b border-border py-4 last:border-0"><p className="font-semibold">{a.user_id}</p><p className="text-sm text-muted-foreground">{a.bio}</p><div className="flex gap-2 mt-3"><button disabled={busy} onClick={()=>decide(a.id,'writer','approved')} className="btn-primary px-4 py-2 text-sm">Approve</button><button disabled={busy} onClick={()=>decide(a.id,'writer','rejected')} className="px-4 py-2 rounded-lg border border-red-500/30 text-red-500 text-sm">Reject</button></div></div>)}</div><div className="bento-card p-6"><h2 className="font-bold text-lg mb-4">Editor Applications</h2>{editorApps.length===0?<p className="text-sm text-muted-foreground">No pending editor applications.</p>:editorApps.map(a=><div key={a.id} className="border-b border-border py-4 last:border-0"><p className="font-semibold">{a.user_id}</p><p className="text-sm text-muted-foreground">{a.bio}</p><div className="flex gap-2 mt-3"><button disabled={busy} onClick={()=>decide(a.id,'editor','approved')} className="btn-primary px-4 py-2 text-sm">Approve</button><button disabled={busy} onClick={()=>decide(a.id,'editor','rejected')} className="px-4 py-2 rounded-lg border border-red-500/30 text-red-500 text-sm">Reject</button></div></div>)}</div></section><section className="bento-card p-6"><h2 className="font-bold text-lg mb-4">Paid Projects Awaiting Assignment</h2>{projects.filter(p=>p.status==='paid').map(p=><div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 border-b border-border"><div><p className="font-semibold">{p.title}</p><p className="text-sm text-muted-foreground">{p.plan} · ₦{Number(p.price_ngn).toLocaleString('en-NG')}</p></div><select disabled={busy||writers.length===0} onChange={e=>setSelectedWriter(s=>({...s,[p.id]:e.target.value}))} value={selectedWriter[p.id]||""} className="form-input text-sm"><option value="">Select writer</option>{writers.map(w=><option key={w.id} value={w.id}>{w.display_name} · {Number(w.rating||0).toFixed(1)}★</option>)}</select><button disabled={busy||!selectedWriter[p.id]} onClick={()=>assign(p,selectedWriter[p.id])} className="btn-primary px-4 py-2 text-sm">Assign Writer</button></div>)}{projects.filter(p=>p.status==='paid').length===0&&<p className="text-sm text-muted-foreground">No paid projects awaiting assignment.</p>}</section></div>};function Metric({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="bento-card p-6"><span className="text-primary">{icon}</span><p className="text-xs uppercase tracking-wider text-muted-foreground mt-3">{label}</p><p className="text-2xl font-bold mt-1">{value}</p></div>}
+import React,{useEffect,useState} from 'react';
+import {CheckCircle,ShieldAlert,Users,DollarSign,FileText,UserCheck,RefreshCw,Wallet as WalletIcon} from 'lucide-react';
+import {useAuth} from '../contexts/AuthContext';
+import {supabase} from '../lib/supabase';
+
+export default function AdminDashboard(){
+  const {user,userData}=useAuth();
+  const [projects,setProjects]=useState<any[]>([]);
+  const [writers,setWriters]=useState<any[]>([]);
+  const [editors,setEditors]=useState<any[]>([]);
+  const [writerApps,setWriterApps]=useState<any[]>([]);
+  const [editorApps,setEditorApps]=useState<any[]>([]);
+  const [payments,setPayments]=useState<any[]>([]);
+  const [withdrawals,setWithdrawals]=useState<any[]>([]);
+  const [selectedWriter,setSelectedWriter]=useState<Record<string,string>>({});
+  const [selectedEditor,setSelectedEditor]=useState<Record<string,string>>({});
+  const [loading,setLoading]=useState(true);
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState('');
+
+  const load=async()=>{
+    setLoading(true);
+    const [p,w,e,wa,ea,pay,wd]=await Promise.all([
+      supabase.from('projects').select('*').order('created_at',{ascending:false}),
+      supabase.from('public_profiles').select('*').eq('verified',true).order('ranking_score',{ascending:false}).order('rating',{ascending:false}),
+      supabase.from('profiles').select('id,full_name,role,account_status').eq('role','editor').eq('account_status','approved').order('full_name'),
+      supabase.from('writer_applications').select('*').eq('status','pending').order('created_at',{ascending:false}),
+      supabase.from('editor_applications').select('*').eq('status','pending').order('created_at',{ascending:false}),
+      supabase.from('payments').select('*').order('created_at',{ascending:false}).limit(100),
+      supabase.from('withdrawals').select('*').eq('status','pending').order('created_at',{ascending:false})
+    ]);
+    setProjects(p.data||[]);setWriters(w.data||[]);setEditors(e.data||[]);setWriterApps(wa.data||[]);setEditorApps(ea.data||[]);setPayments(pay.data||[]);setWithdrawals(wd.data||[]);setLoading(false);
+  };
+
+  useEffect(()=>{if(user&&userData?.role==='admin')void load()},[user,userData]);
+
+  if(userData?.role!=='admin')return <div className="p-8 text-center text-red-500">Administrator access required.</div>;
+  if(loading)return <div className="p-8 text-center text-muted-foreground">Loading admin portal…</div>;
+
+  const active=projects.filter(p=>!['completed','cancelled'].includes(p.status));
+  const revenue=payments.filter(p=>p.status==='completed').reduce((s,p)=>s+Number(p.amount_ngn||0),0);
+  const pendingAssignment=projects.filter(p=>p.status==='paid');
+  const pendingEditor=projects.filter(p=>p.status==='submitted_for_review');
+
+  const decide=async(id:string,role:'writer'|'editor',decision:'approved'|'rejected')=>{
+    setBusy(true);setMsg('');
+    const {error}=await supabase.rpc('admin_decide_application',{p_application_id:id,p_role:role,p_decision:decision});
+    setMsg(error?error.message:'Application updated.');
+    setBusy(false);if(!error)await load();
+  };
+
+  const assignWriter=async(project:any)=>{
+    const writer=selectedWriter[project.id];if(!writer)return;
+    setBusy(true);setMsg('');
+    const deadline=new Date(Date.now()+5*86400000).toISOString();
+    const {error}=await supabase.rpc('assign_writer',{p_project_id:project.id,p_writer_id:writer,p_deadline_at:deadline});
+    setMsg(error?error.message:'Writer assigned with a 5-day deadline.');
+    setBusy(false);if(!error)await load();
+  };
+
+  const assignEditor=async(project:any)=>{
+    const editor=selectedEditor[project.id];if(!editor)return;
+    setBusy(true);setMsg('');
+    const {error}=await supabase.rpc('assign_editor',{p_project_id:project.id,p_editor_id:editor});
+    setMsg(error?error.message:'Editor assigned to the QA queue.');
+    setBusy(false);if(!error)await load();
+  };
+
+  const processWithdrawal=async(id:string)=>{
+    if(!window.confirm('Mark this withdrawal as paid? Only do this after the actual bank transfer has been completed.'))return;
+    setBusy(true);
+    const {error}=await supabase.rpc('admin_process_withdrawal',{p_withdrawal_id:id});
+    setMsg(error?error.message:'Withdrawal marked as paid.');
+    setBusy(false);if(!error)await load();
+  };
+
+  const rejectWithdrawal=async(id:string)=>{
+    const reason=window.prompt('Reason for rejecting this withdrawal:')||'Rejected by administrator';
+    setBusy(true);
+    const {error}=await supabase.rpc('admin_reject_withdrawal',{p_withdrawal_id:id,p_reason:reason});
+    setMsg(error?error.message:'Withdrawal rejected and funds returned.');
+    setBusy(false);if(!error)await load();
+  };
+
+  return <div className="w-full max-w-7xl mx-auto px-4 py-8 space-y-7">
+    <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div><span className="mono-label text-red-500 flex items-center gap-2"><ShieldAlert className="w-4 h-4"/>Super Admin Portal</span><h1 className="text-3xl font-light mt-2">FINALYZED <b>OPERATIONS</b></h1><p className="text-sm text-muted-foreground mt-2">Financial, application and project lifecycle control.</p></div>
+      <button onClick={()=>void load()} className="btn-secondary p-3" aria-label="Refresh"><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></button>
+    </header>
+    {msg&&<div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm">{msg}</div>}
+    <div className="grid md:grid-cols-4 gap-4"><Metric icon={<DollarSign/>} label="Verified revenue" value={'₦'+revenue.toLocaleString('en-NG')}/><Metric icon={<Users/>} label="Projects" value={String(projects.length)}/><Metric icon={<FileText/>} label="Active projects" value={String(active.length)}/><Metric icon={<UserCheck/>} label="Pending applications" value={String(writerApps.length+editorApps.length)}/></div>
+
+    <section className="grid lg:grid-cols-2 gap-6">
+      <ApplicationCard title="Writer Applications" items={writerApps} role="writer" busy={busy} decide={decide}/>
+      <ApplicationCard title="Editor Applications" items={editorApps} role="editor" busy={busy} decide={decide}/>
+    </section>
+
+    <section className="bento-card p-6"><h2 className="font-bold text-lg mb-4">Paid Projects Awaiting Writer Assignment</h2>
+      {pendingAssignment.length===0?<p className="text-sm text-muted-foreground">No paid projects awaiting assignment.</p>:pendingAssignment.map(p=><div key={p.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 py-4 border-b border-border last:border-0"><div className="min-w-0"><p className="font-semibold truncate">{p.title}</p><p className="text-sm text-muted-foreground">{p.plan} · ₦{Number(p.price_ngn).toLocaleString('en-NG')}</p></div><div className="flex gap-2 w-full lg:w-auto"><select disabled={busy||writers.length===0} onChange={e=>setSelectedWriter(s=>({...s,[p.id]:e.target.value}))} value={selectedWriter[p.id]||""} className="form-input text-sm flex-1 lg:w-72"><option value="">Select verified writer</option>{writers.map(w=><option key={w.id} value={w.id}>{w.display_name} · {Number(w.ranking_score||0).toFixed(1)} rank</option>)}</select><button disabled={busy||!selectedWriter[p.id]} onClick={()=>assignWriter(p)} className="btn-primary px-4 py-2 text-sm">Assign</button></div></div>)}
+    </section>
+
+    <section className="bento-card p-6"><h2 className="font-bold text-lg mb-4">Submissions Awaiting Editor Assignment</h2>
+      {pendingEditor.length===0?<p className="text-sm text-muted-foreground">No submissions awaiting editor assignment.</p>:pendingEditor.map(p=><div key={p.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 py-4 border-b border-border last:border-0"><div><p className="font-semibold">{p.title}</p><p className="text-sm text-muted-foreground">{p.plan} · writer {p.writer_id?.slice(0,8)||'—'}</p></div><div className="flex gap-2 w-full lg:w-auto"><select disabled={busy||editors.length===0} onChange={e=>setSelectedEditor(s=>({...s,[p.id]:e.target.value}))} value={selectedEditor[p.id]||""} className="form-input text-sm flex-1 lg:w-72"><option value="">Select approved editor</option>{editors.map(e=><option key={e.id} value={e.id}>{e.full_name||e.id.slice(0,8)}</option>)}</select><button disabled={busy||!selectedEditor[p.id]} onClick={()=>assignEditor(p)} className="btn-primary px-4 py-2 text-sm">Assign Editor</button></div></div>)}
+    </section>
+
+    <section className="bento-card p-6"><h2 className="font-bold text-lg mb-4 flex items-center gap-2"><WalletIcon className="w-5 h-5 text-primary"/>Pending Withdrawals</h2>
+      {withdrawals.length===0?<p className="text-sm text-muted-foreground">No pending withdrawals.</p>:withdrawals.map(w=><div key={w.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 py-4 border-b border-border last:border-0"><div><p className="font-semibold">₦{Number(w.amount_ngn).toLocaleString('en-NG')} + ₦{Number(w.transaction_fee_ngn).toLocaleString('en-NG')} fee</p><p className="text-sm text-muted-foreground">{w.bank_name} · {w.account_name} · ****{w.account_number_last4||'—'}</p></div><div className="flex gap-2"><button disabled={busy} onClick={()=>processWithdrawal(w.id)} className="btn-primary px-4 py-2 text-sm">Mark Paid</button><button disabled={busy} onClick={()=>rejectWithdrawal(w.id)} className="px-4 py-2 rounded-lg border border-red-500/30 text-red-500 text-sm">Reject</button></div></div>)}
+    </section>
+  </div>;
+}
+
+function ApplicationCard({title,items,role,busy,decide}:{title:string;items:any[];role:'writer'|'editor';busy:boolean;decide:(id:string,role:'writer'|'editor',decision:'approved'|'rejected')=>Promise<void>}){return <div className="bento-card p-6"><h2 className="font-bold text-lg mb-4">{title}</h2>{items.length===0?<p className="text-sm text-muted-foreground">No pending applications.</p>:items.map(a=><div key={a.id} className="border-b border-border py-4 last:border-0"><p className="font-semibold">{a.user_id}</p><p className="text-sm text-muted-foreground line-clamp-2">{a.bio}</p><div className="flex gap-2 mt-3"><button disabled={busy} onClick={()=>decide(a.id,role,'approved')} className="btn-primary px-4 py-2 text-sm">Approve</button><button disabled={busy} onClick={()=>decide(a.id,role,'rejected')} className="px-4 py-2 rounded-lg border border-red-500/30 text-red-500 text-sm">Reject</button></div></div>)}</div>}
+function Metric({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="bento-card p-6"><span className="text-primary">{icon}</span><p className="text-xs uppercase tracking-wider text-muted-foreground mt-3">{label}</p><p className="text-2xl font-bold mt-1">{value}</p></div>}
