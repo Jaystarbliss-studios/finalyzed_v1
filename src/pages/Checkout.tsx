@@ -87,6 +87,8 @@ export default function Checkout() {
         .select('id')
         .eq('student_id', user.id)
         .eq('confirmed', true)
+        .order('confirmed_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (specificationError) throw specificationError;
       if (!specification) throw new Error('Please confirm your project specification before payment.');
