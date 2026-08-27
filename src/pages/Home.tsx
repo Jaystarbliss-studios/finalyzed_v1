@@ -139,6 +139,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative px-4 sm:px-6 lg:px-8 py-20 lg:py-32 overflow-hidden">
+        {/* Background visual element */}
         <div className="absolute top-0 right-0 -z-10 translate-x-1/3 -translate-y-1/4 opacity-10 blur-3xl pointer-events-none">
           <div className="w-[800px] h-[800px] rounded-full bg-primary" />
         </div>
@@ -173,8 +174,8 @@ export default function Home() {
               Find a Project Specialist
               <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link to="/login" className="btn-secondary w-full sm:w-auto px-8 py-4 text-lg">
-              Join Us
+            <Link to="/become-specialist" className="btn-secondary w-full sm:w-auto px-8 py-4 text-lg">
+              Become a Specialist
             </Link>
           </motion.div>
         </div>
