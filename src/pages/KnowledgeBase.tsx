@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Search, Building2, CheckCircle, AlertCircle, GraduationCap, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { db } from '../lib/firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '../lib/supabase';
+import { collection, getDocs, query, orderBy } from '../lib/supabaseCompat';
 
 export default function KnowledgeBase() {
   const [searchQuery, setSearchQuery] = useState('');
