@@ -3,11 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-if (!supabaseUrl || !supabaseAnonKey) console.warn('Finalyzed Supabase environment variables are missing.');
+const DEFAULT_SUPABASE_URL = 'https://doxzkgmouzndxtfuaxqk.supabase.co';
+// Public Supabase URL is safe to ship; the anon key is intentionally required from deployment configuration.
+if (!supabaseUrl) console.warn('Finalyzed VITE_SUPABASE_URL is missing; using the production Supabase URL.');
+if (!supabaseAnonKey) console.error('Finalyzed VITE_SUPABASE_ANON_KEY is missing. Configure it in the hosting provider before serving the app.');
 
 export const supabase = createClient(
-  supabaseUrl || 'https://doxzkgmouzndxtfuaxqk.supabase.co',
-  supabaseAnonKey || '',
+  supabaseUrl || DEFAULT_SUPABASE_URL,
+  supabaseAnonKey || '');
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
 );
 
