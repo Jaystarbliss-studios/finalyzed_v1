@@ -39,7 +39,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   }
 
   const SUPER_ADMIN_EMAILS = ['johnrufai242@gmail.com', 'rufaijohnny@gmail.com'];
-  const isAdmin = user?.email && SUPER_ADMIN_EMAILS.includes(user.email);
+  const isAdmin = userData?.role === 'admin' || (user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()));
   const role = userData?.role;
 
   const isStrictlyPublic = ['/', '/login', '/how-it-works'].includes(location.pathname);
