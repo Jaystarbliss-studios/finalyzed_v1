@@ -24,7 +24,7 @@ export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
-  useEffect(() => { let cancelled=false; (async()=>{ const {data,error}=await supabase.from('public_profiles').select('*').order('rating',{ascending:false}).order('completed_projects',{ascending:false}); if(!cancelled)setSpecialists((data||[]).map((s:any)=>({id:s.id,name:s.display_name,isVerified:s.verified,rating:Number(s.rating||0),reviews:Number(s.review_count||0),completedProjects:Number(s.completed_projects||0),averageDeliveryDays:Number(s.average_delivery_days||0),approvalRate:Number(s.accuracy_score||0),specialties:s.specialties||[],imageUrl:s.avatar_url,bio:s.bio}))); setLoading(false); })(); return()=>{cancelled=true}; }, []);
+  useEffect(() => { let cancelled=false; (async()=>{ const {data,error}=await supabase.from('public_profiles').select('*').order('ranking_score',{ascending:false}).order('rating',{ascending:false}).order('completed_projects',{ascending:false}); if(!cancelled)setSpecialists((data||[]).map((s:any)=>({id:s.id,name:s.display_name,isVerified:s.verified,rating:Number(s.rating||0),reviews:Number(s.review_count||0),completedProjects:Number(s.completed_projects||0),averageDeliveryDays:Number(s.average_delivery_days||0),approvalRate:Number(s.accuracy_score||0),specialties:s.specialties||[],imageUrl:s.avatar_url,bio:s.bio}))); setLoading(false); })(); return()=>{cancelled=true}; }, []);
   const filteredSpecialists = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return specialists.filter(s => {
