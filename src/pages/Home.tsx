@@ -56,6 +56,17 @@ const signatures = [
   { left: '15%', top: '82%', rotate: -6, delay: '8.1s', scale: 0.78, path: 'M3 35 C20 12 22 54 37 27 S55 9 65 33 C75 55 85 12 100 30 S122 48 139 19' },
   { left: '75%', top: '84%', rotate: 12, delay: '9s', scale: 0.62, path: 'M4 34 C18 8 20 50 34 25 S54 15 58 36 C64 55 76 10 92 29 S116 46 132 20' },
   { left: '36%', top: '68%', rotate: 4, delay: '9.8s', scale: 0.5, path: 'M5 32 C22 18 24 48 38 26 S52 8 64 34 C78 62 84 5 101 29 S120 42 138 18' },
+  { left: '68%', top: '5%', rotate: -4, delay: '10.6s', scale: 0.52, path: 'M4 34 C18 8 24 52 38 25 S55 10 67 33 C77 55 85 9 101 29 S121 46 137 20' },
+  { left: '12%', top: '9%', rotate: 9, delay: '11.2s', scale: 0.48, path: 'M3 30 C18 2 23 53 38 25 S54 7 66 31 C79 58 86 13 99 30 S119 47 136 20' },
+  { left: '84%', top: '15%', rotate: 6, delay: '12s', scale: 0.5, path: 'M2 32 C18 10 23 48 37 24 S53 7 65 32 C75 52 85 10 100 29 S120 45 134 19' },
+  { left: '33%', top: '31%', rotate: -8, delay: '12.7s', scale: 0.46, path: 'M4 35 C20 12 22 54 37 27 S55 9 65 33 C75 55 85 12 100 30 S122 48 139 19' },
+  { left: '67%', top: '31%', rotate: 10, delay: '13.4s', scale: 0.54, path: 'M3 34 C16 12 25 48 39 22 S54 8 66 31 C79 57 85 11 101 29 S120 44 135 21' },
+  { left: '5%', top: '48%', rotate: -6, delay: '14.1s', scale: 0.5, path: 'M3 30 C18 2 23 53 38 25 S54 7 66 31 C79 58 86 13 99 30 S119 47 136 20' },
+  { left: '41%', top: '50%', rotate: 7, delay: '14.8s', scale: 0.44, path: 'M2 32 C18 10 23 48 37 24 S53 7 65 32 C75 52 85 10 100 29 S120 45 134 19' },
+  { left: '73%', top: '47%', rotate: -11, delay: '15.5s', scale: 0.48, path: 'M4 34 C18 8 24 52 38 25 S55 10 67 33 C77 55 85 9 101 29 S121 46 137 20' },
+  { left: '21%', top: '66%', rotate: 11, delay: '16.2s', scale: 0.5, path: 'M5 32 C22 18 24 48 38 26 S52 8 64 34 C78 62 84 5 101 29 S120 42 138 18' },
+  { left: '89%', top: '70%', rotate: -7, delay: '16.9s', scale: 0.54, path: 'M3 35 C20 12 22 54 37 27 S55 9 65 33 C75 55 85 12 100 30 S122 48 139 19' },
+  { left: '51%', top: '90%', rotate: 5, delay: '17.6s', scale: 0.46, path: 'M4 34 C18 8 20 50 34 25 S54 15 58 36 C64 55 76 10 92 29 S116 46 132 20' },
 ];
 
 const plans = [
@@ -284,7 +295,7 @@ export default function Home() {
 
       {/* PLANS */}
       <section id="plans" className="relative px-4 sm:px-6 lg:px-8 py-24 md:py-28 scroll-mt-20">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto w-full">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 mb-14">
             <div className="max-w-2xl">
               <p className="mono-label text-primary mb-3">Project plans</p>
@@ -302,23 +313,23 @@ export default function Home() {
             </div>
           </div>
 
-          <div id="plans-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
+          <div id="plans-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-7 items-stretch">
             {plans.map((plan) => (
               <motion.article
                 key={plan.name}
                 whileHover={{ y: -5 }}
-                className={`bento-card p-8 flex min-w-0 flex-col ${plan.featured ? 'border-primary/50 shadow-xl shadow-primary/10 ring-1 ring-primary/20' : ''}`}
+                className={`bento-card p-8 md:p-9 flex min-w-0 min-h-[520px] flex-col ${plan.featured ? 'border-primary/50 shadow-xl shadow-primary/10 ring-1 ring-primary/20' : ''}`}
               >
                 {plan.featured && (
                   <div className="self-start badge-verified mb-5">Most popular</div>
                 )}
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{plan.name}</p>
-                <h3 className="text-2xl font-bold mt-2">{plan.eyebrow}</h3>
-                <div className="mt-7 border-y border-border py-5 space-y-3">
+                <h3 className="text-2xl md:text-[1.65rem] font-bold mt-2 leading-tight">{plan.eyebrow}</h3>
+                <div className="mt-8 border-y border-border py-6 space-y-4">
                   <div className="flex items-center gap-3"><Layers3 className="w-4 h-4 text-primary" /><span className="font-semibold">{plan.pages}</span></div>
                   <div className="flex items-center gap-3"><Clock className="w-4 h-4 text-primary" /><span className="font-semibold">{plan.revisions}</span></div>
                 </div>
-                <ul className="space-y-3 mt-6 flex-1">
+                <ul className="space-y-3.5 mt-7 flex-1">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2.5 text-sm text-muted-foreground">
                       <CheckCircle className="w-4 h-4 text-primary mt-0.5 shrink-0" />
@@ -326,7 +337,7 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link to="/login" className={`mt-8 w-full py-3 rounded-xl font-bold text-center transition-all ${plan.featured ? 'btn-primary' : 'btn-secondary'}`}>
+                <Link to="/login" className={`mt-9 w-full py-3.5 rounded-xl font-bold text-center transition-all ${plan.featured ? 'btn-primary' : 'btn-secondary'}`}>
                   Choose {plan.name}
                 </Link>
               </motion.article>
