@@ -21,8 +21,9 @@ export default function Onboarding() {
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({ phone:'', institution:'', faculty:'', department:'', degree:'', matricNumber:'', graduationYear:'', bio:'', expertise:'', availability:'', portfolio:'' });
 
-  if (!user) { navigate('/login', { replace:true }); return null; }
-  if (userData?.onboardingComplete) { navigate('/dashboard', { replace:true }); return null; }
+  if (!user) return <Navigate to="/login" replace />;
+  if (userData?.role === 'admin') return <Navigate to="/dashboard" replace />;
+  if (userData?.onboardingComplete) return <Navigate to="/dashboard" replace />;
   const update = (name:string,value:string) => setFormData(prev=>({...prev,[name]:value}));
 
   const handleComplete = async (event:React.FormEvent) => {
