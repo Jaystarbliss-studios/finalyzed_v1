@@ -313,6 +313,8 @@ export default function Home() {
             </div>
           </div>
 
+          </div>
+
           <div id="plans-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-7 items-stretch">
             {plans.map((plan) => (
               <motion.article
