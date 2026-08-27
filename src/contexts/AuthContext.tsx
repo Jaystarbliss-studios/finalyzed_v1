@@ -17,8 +17,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) { setUserData(null); return; }
     const { data, error } = await supabase.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
-    if (error) { console.error('Error fetching Finalyzed profile:', error); setUserData(null); return; }
-    setUserData(data ? { id: data.id, role: data.role, status: data.account_status === 'pending' ? 'PENDING_REVIEW' : data.account_status === 'suspended' ? 'SUSPENDED' : data.account_status === 'rejected' ? 'REJECTED' : (data.onboarding_complete ? 'ACTIVE' : 'NEW'), onboardingComplete: Boolean(data.onboarding_complete), name: data.full_name, email: currentUser.email, photoURL: data.avatar_url, createdAt: data.created_at, updatedAt: data.updated_at } : null);
+    if (error) {
+      console.error('Error fetching Finalyzed profile:', error);
+      setUserData({ id: currentUser.id, email: currentUser.email, status: 'NEW', onboardingComplete: false });
+      return;
+    }
+    setUserData(data ? {
+      id: data.id,
+      role: data.role,
+      status: data.account_status === 'pending' ? 'PENDING_REVIEW' : data.account_status === 'suspended' ? 'SUSPENDED' : data.account_status === 'rejected' ? 'REJECTED' : (data.onboarding_complete ? 'ACTIVE' : 'NEW'),
+      onboardingComplete: Boolean(data.onboarding_complete),
+      name: data.full_name,
+      email: currentUser.email,
+      photoURL: data.avatar_url,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    } : {
+      id: currentUser.id,
+      email: currentUser.email,
+      status: 'NEW',
+      onboardingComplete: false
+    });
   };
 
   useEffect(() => {
