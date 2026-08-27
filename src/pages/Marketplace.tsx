@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Star, Clock, CheckCircle, ArrowRight, ShieldCheck, User, SlidersHorizontal } from 'lucide-react';
-import { collection, getDocs, query, where } from '../lib/supabaseCompat';
-import { db } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface Specialist {
   id: string;
@@ -25,26 +24,7 @@ export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchSpecialists = async () => {
-      try {
-        // Only curated public profiles are queried here. Private users documents
-        // must never be exposed simply to populate the marketplace.
-        const snapshot = await getDocs(query(collection(db, 'publicProfiles'), where('capability', '==', 'specialist'), where('status', '==', 'ACTIVE')));
-        if (!cancelled) {
-          setSpecialists(snapshot.docs.map(item => ({ id: item.id, ...item.data() })) as Specialist[]);
-        }
-      } catch (error) {
-        console.error('Failed to load Finalyzed marketplace:', error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    fetchSpecialists();
-    return () => { cancelled = true; };
-  }, []);
-
+  useEffect(() => { let cancelled=false; (async()=>{ const {data,error}=await supabase.from('public_profiles').select('*').order('rating',{ascending:false}).order('completed_projects',{ascending:false}); if(!cancelled)setSpecialists((data||[]).map((s:any)=>({id:s.id,name:s.display_name,isVerified:s.verified,rating:Number(s.rating||0),reviews:Number(s.review_count||0),completedProjects:Number(s.completed_projects||0),averageDeliveryDays:Number(s.average_delivery_days||0),approvalRate:Number(s.accuracy_score||0),specialties:s.specialties||[],imageUrl:s.avatar_url,bio:s.bio}))); setLoading(false); })(); return()=>{cancelled=true}; }, []);
   const filteredSpecialists = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return specialists.filter(s => {
