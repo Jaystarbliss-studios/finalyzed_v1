@@ -2,48 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Search, Building2, CheckCircle, AlertCircle, GraduationCap, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { db } from '../lib/supabase';
-import { collection, getDocs, query, orderBy } from '../lib/supabaseCompat';
+import { supabase } from '../lib/supabase';
 
 export default function KnowledgeBase() {
   const [searchQuery, setSearchQuery] = useState('');
   const [institutions, setInstitutions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  useEffect(() => {
-    const fetchInstitutions = async () => {
-      try {
-        const q = query(collection(db, 'institutions'), orderBy('name', 'asc'));
-        const querySnapshot = await getDocs(q);
-        const insts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        // Fallback for demo if DB is empty
-        if (insts.length === 0) {
-          setInstitutions([
-            {
-              id: 'uni-1',
-              name: 'University of Lagos (UNILAG)',
-              verified: true,
-              guidelines: [
-                { id: 'g1', type: 'Formatting', desc: 'APA 7th Edition required for all social science faculties.' },
-                { id: 'g2', type: 'Structure', desc: '5 Chapters standard: Introduction, Literature, Methodology, Results, Conclusion.' },
-                { id: 'g3', type: 'Formatting', desc: 'Times New Roman, 12pt, Double Spaced.' }
-              ]
-            }
-          ]);
-        } else {
-          setInstitutions(insts);
-        }
-      } catch (err) {
-        console.error("Error fetching institutions:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchInstitutions();
-  }, []);
-
+  useEffect(() => { (async()=>{ const {data}=await supabase.from('institutions').select('*').order('name',{ascending:true}); setInstitutions(data||[]); setLoading(false); })(); }, []);
   const filteredInstitutions = institutions.filter(inst => 
     inst.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
