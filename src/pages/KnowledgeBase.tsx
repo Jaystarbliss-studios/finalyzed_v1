@@ -3,8 +3,9 @@ import { motion } from 'motion/react';
 import { Search, Building2, CheckCircle, AlertCircle, GraduationCap, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
-export default function KnowledgeBase() {
+export default function KnowledgeBase() {\n  const { userData } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [institutions, setInstitutions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,8 @@ export default function KnowledgeBase() {
         </p>
       </div>
 
-      <div className="max-w-2xl mx-auto relative mb-16">
+      {userData?.role==='admin'&&<div className="max-w-4xl mx-auto mb-12 bento-card p-6"><div className="flex items-center justify-between gap-3 mb-4"><div><h2 className="font-bold text-lg">Knowledge template manager</h2><p className="text-sm text-muted-foreground">Create a reusable institution template from approved specification defaults.</p></div><ShieldCheck className="w-5 h-5 text-primary"/></div>{templateMsg&&<p className="text-sm text-primary mb-3">{templateMsg}</p>}<div className="grid md:grid-cols-2 gap-3"><select value={templateInstitution} onChange={e=>setTemplateInstitution(e.target.value)} className="form-input"><option value="">Select institution</option>{institutions.map((i:any)=><option key={i.id} value={i.id}>{i.name}</option>)}</select><input value={templateName} onChange={e=>setTemplateName(e.target.value)} className="form-input" placeholder="Template name"/></div><textarea value={templateDefaults} onChange={e=>setTemplateDefaults(e.target.value)} className="form-input mt-3 min-h-[100px] font-mono text-xs" placeholder='{"fontFamily":"Times New Roman","lineSpacing":"2.0"}'/><button onClick={async()=>{try{const parsed=JSON.parse(templateDefaults);if(!templateInstitution||!templateName.trim())throw new Error('Select an institution and name the template.');const {error}=await supabase.from('institution_templates').insert({institution_id:templateInstitution,name:templateName.trim(),specification_defaults:parsed,verified:true});if(error)throw error;setTemplateMsg('Template created.');setTemplateName('');setTemplateDefaults('{}');const {data}=await supabase.from('institution_templates').select('*').order('created_at',{ascending:false});setTemplates(data||[])}catch(e){setTemplateMsg(e instanceof Error?e.message:'Invalid template JSON.')}}} className="btn-primary mt-3">Create template</button></div>}
+<div className="max-w-2xl mx-auto relative mb-16">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <Search className="h-5 w-5 text-muted-foreground" />
         </div>
