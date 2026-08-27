@@ -9,9 +9,9 @@ export default function KnowledgeBase() {
   const [institutions, setInstitutions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  useEffect(() => { (async()=>{ const {data}=await supabase.from('institutions').select('*').order('name',{ascending:true}); setInstitutions(data||[]); setLoading(false); })(); }, []);
+  useEffect(() => { (async()=>{ const [{data:insts},{data:guides}]=await Promise.all([supabase.from('institutions').select('*').order('name',{ascending:true}),supabase.from('institution_guidelines').select('*').order('observed_at',{ascending:false})]); const rows=(insts||[]).map((i:any)=>({...i,guidelines:(guides||[]).filter((g:any)=>g.institution_id===i.id)})); setInstitutions(rows); setLoading(false); })(); }, []);
   const filteredInstitutions = institutions.filter(inst => 
-    inst.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (inst.name||'').toLowerCase().includes(searchQuery.toLowerCase()) || (inst.guidelines||[]).some((g:any)=>(g.requirement||'').toLowerCase().includes(searchQuery.toLowerCase()) || (g.category||'').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -58,7 +58,7 @@ export default function KnowledgeBase() {
                     {inst.name}
                   </h2>
                   <div className="flex items-center gap-2 mt-2">
-                    {inst.verified ? (
+                    {(inst.guidelines||[]).some((g:any)=>g.verified) ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500 border border-green-500/20">
                         <CheckCircle className="w-3 h-3" /> Verified Guidelines
                       </span>
@@ -78,7 +78,7 @@ export default function KnowledgeBase() {
                 {inst.guidelines?.map((guide: any) => (
                   <div key={guide.id} className="p-4 bg-muted/50 rounded-lg border border-border">
                     <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block mb-2">{guide.type}</span>
-                    <p className="text-sm">{guide.desc}</p>
+                    <p className="text-sm">{guide.requirement}</p>
                   </div>
                 ))}
               </div>
