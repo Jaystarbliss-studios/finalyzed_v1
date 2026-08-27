@@ -20,7 +20,7 @@ export default async(req:Request)=>{
  if(!withdrawal) return json({received:true,ignored:"withdrawal not found"});
  if(event.event==="transfer.success"){
    await admin.from("withdrawals").update({status:"completed",processed_at:new Date().toISOString()}).eq("id",withdrawalId);
-   await admin.from("wallet_transactions").insert({user_id:withdrawal.user_id,transaction_type:"withdrawal_paid",amount_ngn:-Number(withdrawal.amount_ngn),reference:"paystack:"+String(data.transfer_code||data.id||withdrawalId),metadata:{withdrawal_id:withdrawalId,status:"success"}});
+   await admin.from("wallet_transactions").insert({user_id:withdrawal.user_id,transaction_type:"withdrawal_completed",amount_ngn:0,reference:"paystack:"+String(data.transfer_code||data.id||withdrawalId),metadata:{withdrawal_id:withdrawalId,status:"success",amount_ngn:Number(withdrawal.amount_ngn)}});
    await admin.from("notifications").insert({user_id:withdrawal.user_id,type:"WITHDRAWAL_COMPLETED",title:"Withdrawal completed",body:"Your Finalyzed wallet withdrawal has been successfully transferred.",metadata:{withdrawal_id:withdrawalId}});
  } else {
    await admin.rpc("admin_reject_withdrawal",{p_withdrawal_id:withdrawalId,p_reason:data.reason||"Paystack transfer failed or was reversed"});
