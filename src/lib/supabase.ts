@@ -11,6 +11,8 @@ export const supabase = createClient(
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
 );
 
+export const db = supabase;
+
 export type FinalyzedRole = 'student' | 'writer' | 'editor' | 'admin';
 export type PlanType = 'basic' | 'standard' | 'premium';
 export const PLAN_CONFIG = {
