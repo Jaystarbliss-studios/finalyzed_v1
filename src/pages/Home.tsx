@@ -327,6 +327,7 @@ export default function Home() {
             <p className="text-sm text-muted-foreground leading-relaxed"><strong className="text-foreground">Before payment:</strong> Finalyzed records your project specification and crosschecks the required format, structure, institution, department and deliverables so the selected plan is tied to the right project brief.</p>
           </div>
         </div>
+        </div>
       </section>
 
       {/* READY CTA — intentionally before FAQ */}
