@@ -12,10 +12,7 @@ export default function ProjectChat({ projectId, onClose }: { projectId: string,
   useEffect(() => {
     if (!projectId || projectId === 'demo') return;
     
-    const q = query(
-      supabase.from('project_messages'),
-      orderBy('createdAt', 'asc')
-    );
+    const q = supabase.from('project_messages').select('*').eq('project_id', projectId).order('created_at', { ascending: true });
     
     let active = true;
     const load = async () => {
