@@ -130,24 +130,32 @@ const faqs = [
 ];
 
 function SignatureWall() {
+  const names = ['Ada','Maya','Daniel','Grace','David','Ruth','Samuel','Joy','Michael','Esther','John','Faith','Sarah','Emeka','Chisom','Tolu','Aisha','Daniel','Victor','Deborah','James','Amaka','Peter','Naomi','Joseph','Mercy','Kelvin','Ife','Joshua','Hannah','Nathan','Peace','Benjamin','Zainab','Caleb','Favour','Elijah','Abigail','Noah','Precious','Isaac','Mary','Gabriel','Rose','Andrew','Sophia','David','Evelyn'];
   return (
     <div className="signature-wall" aria-hidden="true">
-      {signatures.map((signature, index) => (
-        <svg
-          key={index}
-          className="signature-trace"
-          style={{
-            left: signature.left,
-            top: signature.top,
-            transform: `rotate(${signature.rotate}deg) scale(${signature.scale})`,
-            animationDelay: signature.delay,
-          }}
-          viewBox="0 0 145 64"
-        >
-          <path d={signature.path} />
-          <path className="signature-tail" d="M102 47 C116 58 128 54 142 43" />
-        </svg>
-      ))}
+      {Array.from({ length: 150 }, (_, index) => {
+        const col = index % 10;
+        const row = Math.floor(index / 10);
+        const left = (col * 10.7 + ((row * 7) % 8) - 2) % 100;
+        const top = (row * 6.8 + ((index * 13) % 5) - 2) % 100;
+        const rotate = ((index * 17) % 34) - 17;
+        const scale = 0.48 + ((index * 23) % 55) / 100;
+        const delay = ((index * 0.73) % 22).toFixed(2);
+        return (
+          <span
+            key={index}
+            className="signature-name"
+            style={{
+              left: left + '%',
+              top: top + '%',
+              transform: 'rotate(' + rotate + 'deg) scale(' + scale + ')',
+              animationDelay: delay + 's',
+            }}
+          >
+            {names[index % names.length]}
+          </span>
+        );
+      })}
     </div>
   );
 }
