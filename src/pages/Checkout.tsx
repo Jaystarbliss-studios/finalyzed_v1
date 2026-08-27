@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Shield, CreditCard, Lock, Zap, Star, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/supabase';
+import { collection, addDoc, serverTimestamp } from '../lib/supabaseCompat';
 import { usePaystackPayment } from 'react-paystack';
 
 const plans = [
