@@ -45,6 +45,17 @@ const signatures = [
   { left: '62%', top: '72%', rotate: 13, delay: '5s', scale: 0.78, path: 'M3 30 C18 2 23 53 38 25 S54 7 66 31 C79 58 86 13 99 30 S119 47 136 20' },
   { left: '38%', top: '23%', rotate: -5, delay: '6s', scale: 0.68, path: 'M2 32 C18 10 23 48 37 24 S53 7 65 32 C75 52 85 10 100 29 S120 45 134 19' },
   { left: '45%', top: '83%', rotate: -8, delay: '7s', scale: 0.95, path: 'M4 34 C18 8 24 52 38 25 S55 10 67 33 C77 55 85 9 101 29 S121 46 137 20' },
+  { left: '30%', top: '7%', rotate: -7, delay: '0.8s', scale: 0.62, path: 'M4 34 C18 8 24 52 38 25 S55 10 67 33 C77 55 85 9 101 29 S121 46 137 20' },
+  { left: '54%', top: '14%', rotate: 11, delay: '1.9s', scale: 0.58, path: 'M3 30 C18 2 23 53 38 25 S54 7 66 31 C79 58 86 13 99 30 S119 47 136 20' },
+  { left: '88%', top: '25%', rotate: -5, delay: '2.7s', scale: 0.72, path: 'M2 32 C18 10 23 48 37 24 S53 7 65 32 C75 52 85 10 100 29 S120 45 134 19' },
+  { left: '8%', top: '29%', rotate: 14, delay: '3.8s', scale: 0.6, path: 'M4 35 C20 12 22 54 37 27 S55 9 65 33 C75 55 85 12 100 30 S122 48 139 19' },
+  { left: '48%', top: '38%', rotate: -13, delay: '4.6s', scale: 0.74, path: 'M3 34 C16 12 25 48 39 22 S54 8 66 31 C79 57 85 11 101 29 S120 44 135 21' },
+  { left: '93%', top: '54%', rotate: 8, delay: '5.6s', scale: 0.64, path: 'M3 30 C18 2 23 53 38 25 S54 7 66 31 C79 58 86 13 99 30 S119 47 136 20' },
+  { left: '26%', top: '55%', rotate: 6, delay: '6.4s', scale: 0.56, path: 'M2 32 C18 10 23 48 37 24 S53 7 65 32 C75 52 85 10 100 29 S120 45 134 19' },
+  { left: '56%', top: '60%', rotate: -9, delay: '7.3s', scale: 0.68, path: 'M4 34 C18 8 24 52 38 25 S55 10 67 33 C77 55 85 9 101 29 S121 46 137 20' },
+  { left: '15%', top: '82%', rotate: -6, delay: '8.1s', scale: 0.78, path: 'M3 35 C20 12 22 54 37 27 S55 9 65 33 C75 55 85 12 100 30 S122 48 139 19' },
+  { left: '75%', top: '84%', rotate: 12, delay: '9s', scale: 0.62, path: 'M4 34 C18 8 20 50 34 25 S54 15 58 36 C64 55 76 10 92 29 S116 46 132 20' },
+  { left: '36%', top: '68%', rotate: 4, delay: '9.8s', scale: 0.5, path: 'M5 32 C22 18 24 48 38 26 S52 8 64 34 C78 62 84 5 101 29 S120 42 138 18' },
 ];
 
 const plans = [
@@ -175,7 +186,7 @@ export default function Home() {
               <ArrowRight className="w-5 h-5" />
             </Link>
             <Link to="/become-specialist" className="btn-secondary w-full sm:w-auto px-8 py-4 text-lg">
-              Become a Specialist
+              Join Us
             </Link>
           </motion.div>
         </div>
@@ -273,8 +284,8 @@ export default function Home() {
 
       {/* PLANS */}
       <section id="plans" className="relative px-4 sm:px-6 lg:px-8 py-24 md:py-28 scroll-mt-20">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 mb-14">
             <div className="max-w-2xl">
               <p className="mono-label text-primary mb-3">Project plans</p>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight">A plan that matches the size of your project.</h2>
@@ -291,12 +302,12 @@ export default function Home() {
             </div>
           </div>
 
-          <div id="plans-grid" className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div id="plans-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
             {plans.map((plan) => (
               <motion.article
                 key={plan.name}
                 whileHover={{ y: -5 }}
-                className={`bento-card p-7 flex flex-col ${plan.featured ? 'border-primary/50 shadow-xl shadow-primary/10 ring-1 ring-primary/20' : ''}`}
+                className={`bento-card p-8 flex min-w-0 flex-col ${plan.featured ? 'border-primary/50 shadow-xl shadow-primary/10 ring-1 ring-primary/20' : ''}`}
               >
                 {plan.featured && (
                   <div className="self-start badge-verified mb-5">Most popular</div>
@@ -326,7 +337,6 @@ export default function Home() {
             <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0"><FileText className="w-5 h-5 text-primary" /></div>
             <p className="text-sm text-muted-foreground leading-relaxed"><strong className="text-foreground">Before payment:</strong> Finalyzed records your project specification and crosschecks the required format, structure, institution, department and deliverables so the selected plan is tied to the right project brief.</p>
           </div>
-        </div>
         </div>
       </section>
 
