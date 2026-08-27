@@ -261,8 +261,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <img src="/finalyzed_logo.png" alt="Finalyzed" className="h-8 w-8 rounded-md object-cover" />
             <span className="font-bold text-lg tracking-tight">FINALYZED</span>
           </Link>
-          <button onClick={handleLogout} className="text-muted-foreground hover:text-red-500 p-2 transition-colors">
-            <LogOut className="w-5 h-5" />
+          <button onClick={()=>setProfileOpen(v=>!v)} className="w-9 h-9 rounded-full overflow-hidden bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold uppercase">
+            {userData?.avatarUrl ? <img src={userData.avatarUrl} alt="" className="w-full h-full object-cover"/> : (userData?.username || userData?.name || user.email || 'U').charAt(0)}
           </button>
         </header>
 
