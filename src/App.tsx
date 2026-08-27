@@ -261,9 +261,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <img src="/finalyzed_logo.png" alt="Finalyzed" className="h-8 w-8 rounded-md object-cover" />
             <span className="font-bold text-lg tracking-tight">FINALYZED</span>
           </Link>
-          <button onClick={()=>setProfileOpen(v=>!v)} className="w-9 h-9 rounded-full overflow-hidden bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold uppercase">
+          <div className="relative"><button onClick={()=>setProfileOpen(v=>!v)} className="w-9 h-9 rounded-full overflow-hidden bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold uppercase">
             {userData?.avatarUrl ? <img src={userData.avatarUrl} alt="" className="w-full h-full object-cover"/> : (userData?.username || userData?.name || user.email || 'U').charAt(0)}
-          </button>
+          </button>{profileOpen&&<div className="absolute right-0 top-11 z-50 w-52 rounded-2xl border border-border bg-background shadow-xl p-2"><Link to="/dashboard" onClick={()=>setProfileOpen(false)} className="block px-3 py-2 rounded-xl hover:bg-muted text-sm">Profile & Dashboard</Link><button onClick={()=>setDeleteOpen(true)} className="w-full text-left px-3 py-2 rounded-xl hover:bg-red-500/10 text-sm text-red-500">Delete account</button><button onClick={()=>void handleLogout()} className="w-full text-left px-3 py-2 rounded-xl hover:bg-muted text-sm">Log out</button></div>}</div>
         </header>
 
         {/* DESKTOP TOP BAR */}
