@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Save, ShieldCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { loadProjectSpecification, saveProjectSpecification, validateSpecification } from '../lib/projectSpecifications';
+import { supabase } from '../lib/supabase';
 
 const STEPS = ['Student Info','Project Identity','Institution Requirements','Formatting','Page & Length','Structure','Citation & References','Methodology','Data & Results','Appendices','Presentation','Special Instructions','Confirmation'];
 const DEFAULTS: Record<string, any> = { projectType:'', citationStyle:'', fontFamily:'Times New Roman', bodyFontSize:'12', headingFontSize:'12', lineSpacing:'2.0', alignment:'Justified', marginLeft:'1.5', marginRight:'1', marginTop:'1', marginBottom:'1', chapterCount:'5', appendices:[] };
@@ -16,9 +17,11 @@ function FieldCheckbox({label,k,data,update}:WizardData&{label:string;k:string})
 function WizardStepTitle({n,title,text}:{n:number;title:string;text:string}){return <div className="mb-6"><div className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Step {n}</div><h2 className="text-2xl font-bold mt-1">{title}</h2><p className="text-muted-foreground mt-2 max-w-2xl">{text}</p></div>}
 
 export default function ProjectWizardV2() {
-  const { user, userData } = useAuth(); const navigate = useNavigate();
+  const { user, userData } = useAuth(); const navigate = useNavigate(); const [searchParams] = useSearchParams();
   const [step,setStep] = useState(0); const [data,setData] = useState<Record<string,any>>(DEFAULTS); const [saving,setSaving] = useState(false); const [saved,setSaved] = useState(false); const [confirmed,setConfirmed] = useState(false); const [errors,setErrors] = useState<string[]>([]); const [loaded,setLoaded] = useState(false);
   const specialistId = localStorage.getItem('finalyzed_selected_specialist') || '';
+  const templateId = searchParams.get('template') || '';
+  useEffect(()=>{let cancelled=false;(async()=>{if(!user||!templateId)return;const {data:template,error}=await supabase.rpc('use_institution_template',{p_template_id:templateId});if(cancelled||error||!template)return;setData(p=>({...p,...(template as Record<string,any>)}));})();return()=>{cancelled=true}},[user,templateId]);
 
   useEffect(()=>{ let cancelled=false; (async()=>{ if(!user)return; try { const remote=await loadProjectSpecification(user.id); if(cancelled)return; if(remote){setData({...DEFAULTS,...remote});setConfirmed(remote.status==='CONFIRMED');} else if(userData?.studentProfile){setData(p=>({...p,fullName:userData.name||'',email:user.email||'',institution:userData.studentProfile.institution||'',faculty:userData.studentProfile.faculty||'',department:userData.studentProfile.department||'',degree:userData.studentProfile.degree||'',matricNumber:userData.studentProfile.matricNumber||'',supervisor:userData.studentProfile.supervisor||'',hod:userData.studentProfile.hod||''}));}} catch(e){console.error(e);} finally{if(!cancelled)setLoaded(true);}})(); return()=>{cancelled=true;};},[user,userData]);
 
