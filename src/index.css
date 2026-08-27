@@ -93,6 +93,30 @@
   opacity: 0.95;
 }
 
+.signature-name {
+  position: absolute;
+  color: var(--color-primary);
+  font-family: "Amsterdam One", "Brush Script MT", "Segoe Script", cursive;
+  font-size: clamp(14px, 1.25vw, 24px);
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  white-space: nowrap;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px rgba(51, 113, 121, 0.08));
+  animation: signatureName 9s ease-in-out infinite;
+  user-select: none;
+}
+
+@keyframes signatureName {
+  0% { opacity: 0; transform-origin: left center; }
+  8% { opacity: 0.08; }
+  24% { opacity: 0.22; }
+  42% { opacity: 0.30; }
+  62% { opacity: 0.18; }
+  78% { opacity: 0.07; }
+  100% { opacity: 0; }
+}
+
 .signature-trace {
   position: absolute;
   width: 150px;
