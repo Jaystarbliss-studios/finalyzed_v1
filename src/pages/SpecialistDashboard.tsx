@@ -3,8 +3,8 @@ import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { FileText, Clock, Wallet, CheckCircle, ChevronRight, AlertCircle, TrendingUp, BarChart2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../lib/supabase';
+import { collection, query, where, getDocs, orderBy } from '../lib/supabaseCompat';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const earningsData = [
