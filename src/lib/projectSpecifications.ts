@@ -44,7 +44,7 @@ function toRow(specification: Record<string, unknown>, ownerId: string, status: 
 export async function saveProjectSpecification(ownerId: string, specification: Record<string, unknown>, status: 'DRAFT' | 'CONFIRMED' = 'DRAFT'): Promise<void> {
   const { data: existing, error: readError } = await supabase.from('project_specifications').select('id').eq('student_id', ownerId).maybeSingle();
   if (readError) throw readError;
-  const row = toRow(specification, ownerId, status, existing ? 1 : 1);
+  const row = toRow(specification, ownerId, status, existing ? 1 : 1);\n  const institutionName = String(specification.institution ?? '').trim();\n  const departmentName = String(specification.department ?? '').trim();\n  if (institutionName) { const { data } = await supabase.from('institutions').select('id').ilike('name', institutionName).limit(1).maybeSingle(); if (data?.id) (row as any).institution_id = data.id; }\n  if (departmentName && (row as any).institution_id) { const { data } = await supabase.from('departments').select('id').eq('institution_id',(row as any).institution_id).ilike('name',departmentName).limit(1).maybeSingle(); if (data?.id) (row as any).department_id = data.id; }
   const { data: saved, error } = existing
     ? await supabase.from('project_specifications').update(row).eq('id', existing.id).select('id').single()
     : await supabase.from('project_specifications').insert(row).select('id').single();
