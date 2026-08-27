@@ -6,8 +6,7 @@ import {
   Wallet as WalletIcon, LogOut, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { auth } from './lib/firebase';
-import { signOut } from 'firebase/auth';
+import { supabase } from './lib/supabase';
 
 import Home from './pages/Home';
 import DashboardDispatcher from './pages/DashboardDispatcher';
@@ -31,7 +30,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     navigate('/');
   };
 
