@@ -10,7 +10,7 @@ if (!supabaseAnonKey) console.error('Finalyzed VITE_SUPABASE_ANON_KEY is missing
 
 export const supabase = createClient(
   supabaseUrl || DEFAULT_SUPABASE_URL,
-  supabaseAnonKey || '');
+  supabaseAnonKey || '',
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
 );
 
