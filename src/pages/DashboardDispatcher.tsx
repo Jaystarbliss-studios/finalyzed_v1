@@ -14,7 +14,8 @@ export default function DashboardDispatcher() {
   const { user, userData } = useAuth();
 
   if (!user) return <Navigate to="/login" replace />;
-  if (user.email && SUPER_ADMIN_EMAILS.includes(user.email)) return <AdminDashboard />;
+  if (userData?.role === 'admin') return <AdminDashboard />;
+  if (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) return <AdminDashboard />;
 
   // A newly registered writer/editor is deliberately represented as a pending
   // application rather than receiving a privileged dashboard immediately.
@@ -23,7 +24,9 @@ export default function DashboardDispatcher() {
   }
 
   if (!userData) return <Navigate to="/onboarding" replace />;
-  if (userData.role === 'specialist') return <SpecialistDashboard />;
+  if (!userData.onboardingComplete) return <Navigate to="/onboarding" replace />;
+  if (userData.status === 'PENDING_REVIEW' && (userData.role === 'writer' || userData.role === 'editor')) return <PendingCapability capability={userData.role} />;
+  if (userData.role === 'writer' || userData.role === 'specialist') return <SpecialistDashboard />;
   if (userData.role === 'editor') return <EditorDashboard />;
   return <StudentDashboard />;
 }
