@@ -55,20 +55,13 @@ async function startServer() {
     const paystackKey = process.env.PAYSTACK_SECRET_KEY;
     const client = getSupabaseAdmin() as any;
     if (!paystackKey || !client) return res.status(503).json({ error: 'Payment service is not configured.' });
-
     try {
       const user = await requireAuth(req);
-      const { data: project, error: projectError } = await client
-        .from('projects').select('id,student_id,title,plan,status,price_ngn')
-        .eq('id', projectId).maybeSingle();
+      const { data: project, error: projectError } = await client.from('projects')
+        .select('id,student_id,title,plan,status,price_ngn').eq('id', projectId).maybeSingle();
       if (projectError) throw projectError;
-      if (!project) return res.status(404).json({ error: 'Project not found' });
-      if (project.student_id !== user.id) return res.status(403).json({ error: 'You do not own this project' });
+      if (!project || project.student_id !== user.id) return res.status(404).json({ error: 'Project not found' });
       if (!['draft', 'payment_pending'].includes(String(project.status))) return res.status(409).json({ error: 'This project is not awaiting payment' });
-
-      const { data: existingPayment, error: existingPaymentError } = await client.from('payments').select('id').eq('reference', reference).maybeSingle();
-      if (existingPaymentError) throw existingPaymentError;
-      if (existingPayment) return res.status(409).json({ error: 'This payment reference has already been processed' });
 
       const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
         headers: { Authorization: `Bearer ${paystackKey}` },
@@ -79,32 +72,58 @@ async function startServer() {
       const paidNaira = Number(data.data.amount) / 100;
       const expectedNaira = Number(project.price_ngn);
       const currency = String(data.data.currency || '');
-      if (!Number.isFinite(expectedNaira) || Math.abs(paidNaira - expectedNaira) > 0.01 || currency !== 'NGN') return res.status(400).json({ error: 'Payment amount or currency does not match the project' });
-
       const customerEmail = String(data.data.customer?.email || '').toLowerCase();
       const accountEmail = String(user.email || '').toLowerCase();
+      if (!Number.isFinite(paidNaira) || Math.round(paidNaira) !== expectedNaira || currency !== 'NGN') return res.status(400).json({ error: 'Payment amount or currency does not match the project' });
       if (customerEmail && accountEmail && customerEmail !== accountEmail) return res.status(400).json({ error: 'Payment customer does not match the authenticated account' });
 
-      const { data: payment, error: paymentError } = await client.from('payments').insert({
-        project_id: project.id, student_id: user.id, provider: 'paystack', reference,
-        amount_ngn: Math.round(paidNaira), status: 'completed', paid_at: new Date().toISOString(),
-        metadata: { currency, paystack_transaction_id: data.data?.id ?? null },
-      }).select('id').single();
-      if (paymentError) throw paymentError;
-
-      const { error: projectUpdateError } = await client.from('projects').update({ status: 'paid', updated_at: new Date().toISOString() }).eq('id', project.id).eq('student_id', user.id);
-      if (projectUpdateError) throw projectUpdateError;
-
-      const { error: auditError } = await client.from('audit_logs').insert({
-        actor_id: user.id, action: 'PROJECT_PAYMENT_VERIFIED', entity_type: 'project', entity_id: project.id,
-        metadata: { payment_id: payment.id, reference, amount_ngn: Math.round(paidNaira), currency },
+      const { data: payment, error: paymentError } = await client.rpc('record_verified_project_payment', {
+        p_project_id: project.id, p_student_id: user.id, p_reference: reference,
+        p_amount_ngn: Math.round(paidNaira),
+        p_metadata: { currency, paystack_transaction_id: data.data?.id ?? null },
       });
-      if (auditError) console.warn('Payment audit log failed:', auditError.message);
-      return res.json({ success: true, reference, amount: paidNaira, currency });
+      if (paymentError) {
+        if (String(paymentError.message).includes('PAYMENT_REFERENCE_ALREADY_USED')) return res.status(409).json({ error: 'This payment reference has already been processed' });
+        throw paymentError;
+      }
+      return res.json({ success: true, reference, amount: paidNaira, currency, paymentId: payment?.id });
     } catch (error: any) {
       if (error?.message === 'UNAUTHENTICATED') return res.status(401).json({ error: 'Authentication required' });
       if (error?.message === 'SERVER_NOT_CONFIGURED') return res.status(503).json({ error: 'Payment service is not configured.' });
       console.error('Paystack verification error:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/paystack/verify-points', async (req, res) => {
+    const { reference, points } = req.body as { reference?: string; points?: number };
+    if (!reference || !Number.isInteger(points) || points <= 0) return res.status(400).json({ error: 'Valid reference and points are required' });
+    const paystackKey = process.env.PAYSTACK_SECRET_KEY;
+    const client = getSupabaseAdmin() as any;
+    if (!paystackKey || !client) return res.status(503).json({ error: 'Payment service is not configured.' });
+    try {
+      const user = await requireAuth(req);
+      const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+        headers: { Authorization: `Bearer ${paystackKey}` },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.status || data.data?.status !== 'success') return res.status(400).json({ error: 'Transaction verification failed' });
+      const paidNaira = Number(data.data.amount) / 100;
+      const expectedNaira = points * 10;
+      const currency = String(data.data.currency || '');
+      const customerEmail = String(data.data.customer?.email || '').toLowerCase();
+      const accountEmail = String(user.email || '').toLowerCase();
+      if (!Number.isFinite(paidNaira) || Math.round(paidNaira) !== expectedNaira || currency !== 'NGN') return res.status(400).json({ error: 'Point purchase amount or currency does not match' });
+      if (customerEmail && accountEmail && customerEmail !== accountEmail) return res.status(400).json({ error: 'Payment customer does not match the authenticated account' });
+      const { data: wallet, error } = await client.rpc('credit_purchased_points', {
+        p_user_id: user.id, p_points: points, p_amount_ngn: expectedNaira, p_reference: reference,
+      });
+      if (error) throw error;
+      return res.json({ success: true, points, amountNgn: expectedNaira, currency, wallet });
+    } catch (error: any) {
+      if (error?.message === 'UNAUTHENTICATED') return res.status(401).json({ error: 'Authentication required' });
+      if (error?.message === 'SERVER_NOT_CONFIGURED') return res.status(503).json({ error: 'Payment service is not configured.' });
+      console.error('Finalyzed Points verification error:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   });
