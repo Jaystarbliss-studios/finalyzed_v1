@@ -43,7 +43,7 @@ const handler: Handler = async (event) => {
     const transferResponse = await fetch('https://api.paystack.co/transfer', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + paystackKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source: 'balance', amount: Number(withdrawal.amount_ngn) * 100, recipient: recipientCode, reason: 'Finalyzed wallet withdrawal' })
+      body: JSON.stringify({ source: 'balance', amount: Number(withdrawal.amount_ngn) * 100, recipient: recipientCode, reason: 'Finalyzed wallet withdrawal', reference: withdrawal.id })
     });
     const transfer = await transferResponse.json();
     if (!transferResponse.ok || !transfer.status) throw new Error(transfer.message || 'Paystack transfer could not be initiated.');
