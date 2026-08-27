@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Coins, RefreshCw } from 'lucide-react';
-import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, where } from '../lib/supabaseCompat';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
+import { db } from '../lib/supabase';
 
 interface WalletRecord { availableBalance?: number; pendingBalance?: number; pointBalance?: number; }
 interface LedgerItem { id: string; type?: string; amount?: number; description?: string; status?: string; createdAt?: any; }
