@@ -53,7 +53,7 @@ async function startServer() {
     const { reference, projectId } = req.body as { reference?: string; projectId?: string };
     if (!reference || !projectId) return res.status(400).json({ error: 'Missing required fields' });
     const paystackKey = process.env.PAYSTACK_SECRET_KEY;
-    const client = getSupabaseAdmin();
+    const client = getSupabaseAdmin() as any;
     if (!paystackKey || !client) return res.status(503).json({ error: 'Payment service is not configured.' });
 
     try {
