@@ -9,7 +9,7 @@ export default function KnowledgeBase() {
   const [institutions, setInstitutions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  useEffect(() => { (async()=>{ const [{data:insts},{data:guides}]=await Promise.all([supabase.from('institutions').select('*').order('name',{ascending:true}),supabase.from('institution_guidelines').select('*').order('observed_at',{ascending:false})]); const rows=(insts||[]).map((i:any)=>({...i,guidelines:(guides||[]).filter((g:any)=>g.institution_id===i.id)})); setInstitutions(rows); setLoading(false); })(); }, []);
+  useEffect(() => { (async()=>{ const [{data:insts},{data:guides},{data:tpls}]=await Promise.all([supabase.from('institutions').select('*').order('name',{ascending:true}),supabase.from('institution_guidelines').select('*').order('observed_at',{ascending:false}),supabase.from('institution_templates').select('*').order('created_at',{ascending:false})]); const rows=(insts||[]).map((i:any)=>({...i,guidelines:(guides||[]).filter((g:any)=>g.institution_id===i.id)})); setInstitutions(rows);setTemplates(tpls||[]); setLoading(false); })(); }, []);
   const filteredInstitutions = institutions.filter(inst => 
     (inst.name||'').toLowerCase().includes(searchQuery.toLowerCase()) || (inst.guidelines||[]).some((g:any)=>(g.requirement||'').toLowerCase().includes(searchQuery.toLowerCase()) || (g.category||'').toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -74,7 +74,7 @@ export default function KnowledgeBase() {
                 </Link>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{templates.filter((t:any)=>t.institution_id===inst.id).map((t:any)=><div key={t.id} className="p-4 bg-primary/5 rounded-xl border border-primary/15"><div className="flex items-start justify-between gap-3"><div><span className="text-xs uppercase tracking-wider font-bold text-primary">Prepaid template</span><p className="font-semibold mt-1">{t.name}</p><p className="text-xs text-muted-foreground mt-1">Used {t.usage_count||0} times</p></div><Link to={'/start-project?template='+t.id} className="btn-primary text-xs px-3 py-2 whitespace-nowrap">Use template</Link></div></div>)}</div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {inst.guidelines?.map((guide: any) => (
                   <div key={guide.id} className="p-4 bg-muted/50 rounded-lg border border-border">
                     <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block mb-2">{guide.type}</span>
