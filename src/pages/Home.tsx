@@ -130,51 +130,6 @@ function SignatureWall() {
   );
 }
 
-function HeroVideo() {
-  const [scene, setScene] = useState(0);
-  const [videoFailed, setVideoFailed] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setScene((current) => (current + 1) % heroScenes.length);
-      setVideoFailed(false);
-    }, 8500);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const current = heroScenes[scene];
-
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {!videoFailed ? (
-        <video
-          key={current.src}
-          className="hero-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          poster="/finalyzed-1.png"
-          onError={() => setVideoFailed(true)}
-        >
-          <source src={current.src} type="video/mp4" />
-        </video>
-      ) : (
-        <div className="absolute inset-0 bg-[url('/finalyzed-1.png')] bg-cover bg-center scale-105" />
-      )}
-      <div className="hero-video-wash" />
-      <div className="hero-video-vignette" />
-      <div className="absolute bottom-5 left-5 md:left-8 z-10 flex items-center gap-3 rounded-full border border-white/15 bg-black/30 px-4 py-2 text-xs text-white/85 backdrop-blur-md">
-        <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_14px_rgba(51,113,121,0.9)]" />
-        <span className="font-semibold tracking-wide">{current.label}</span>
-        <span className="hidden sm:inline text-white/55">·</span>
-        <span className="hidden sm:inline text-white/65">{current.caption}</span>
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
@@ -182,59 +137,46 @@ export default function Home() {
     <div className="w-full relative overflow-hidden">
       <SignatureWall />
 
-      {/* HERO */}
-      <section className="relative min-h-[680px] md:min-h-[760px] flex items-center overflow-hidden">
-        <HeroVideo />
-        <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 py-28 md:py-36">
-          <div className="max-w-7xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65 }}
-              className="max-w-4xl"
-            >
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md mb-7">
-                <Feather className="w-3.5 h-3.5 text-primary-light" />
-                From idea to final submission
-              </div>
-              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.6rem] font-bold tracking-[-0.045em] text-white leading-[0.98] mb-7">
-                Your project.
-                <br />
-                <span className="text-primary-light">Finalyzed.</span>
-              </h1>
-              <p className="text-lg md:text-xl text-white/72 max-w-2xl leading-relaxed mb-10">
-                Find the right project specialist, lock in your exact requirements, follow the work as it moves through specialist delivery and independent editor review, and finish with confidence.
-              </p>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <Link to="/specialists" className="btn-primary px-7 py-4 text-base flex items-center justify-center gap-2">
-                  Find a Project Specialist
-                  <ArrowRight className="w-5 h-5" />
-                </Link>
-                <Link to="/login" className="btn-secondary border-white/20 bg-white/10 text-white hover:bg-white/15 px-7 py-4 text-base flex items-center justify-center gap-2">
-                  Join Us
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.6 }}
-              className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl"
-            >
-              {[
-                ['Verified workflow', 'Specialist → Editor → Student'],
-                ['Structured plans', 'Pages, files & revisions'],
-                ['Transparent history', 'Track every project stage'],
-              ].map(([title, desc]) => (
-                <div key={title} className="rounded-2xl border border-white/10 bg-black/25 px-4 py-4 backdrop-blur-md">
-                  <p className="text-sm font-bold text-white">{title}</p>
-                  <p className="text-xs text-white/55 mt-1">{desc}</p>
-                </div>
-              ))}
-            </motion.div>
-          </div>
+      {/* Hero Section */}
+      <section className="relative px-4 sm:px-6 lg:px-8 py-20 lg:py-32 overflow-hidden">
+        <div className="absolute top-0 right-0 -z-10 translate-x-1/3 -translate-y-1/4 opacity-10 blur-3xl pointer-events-none">
+          <div className="w-[800px] h-[800px] rounded-full bg-primary" />
+        </div>
+        
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-5xl md:text-7xl font-bold tracking-tight text-foreground leading-[1.1] mb-6"
+          >
+            Find the right support. <br className="hidden md:block" />
+            <span className="text-primary">Get your project finalized.</span>
+          </motion.h1>
+          
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
+          >
+            The professional academic project-support marketplace. Connect with verified specialists, track progress transparently, and ensure quality with expert editors.
+          </motion.p>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Link to="/specialists" className="btn-primary w-full sm:w-auto px-8 py-4 text-lg flex items-center justify-center gap-2">
+              Find a Project Specialist
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <Link to="/login" className="btn-secondary w-full sm:w-auto px-8 py-4 text-lg">
+              Join Us
+            </Link>
+          </motion.div>
         </div>
       </section>
 
