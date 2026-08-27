@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Shield, CreditCard, Lock, Zap, Star, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { db } from '../lib/supabase';
 import { collection, addDoc, serverTimestamp } from '../lib/supabaseCompat';
 import { usePaystackPayment } from 'react-paystack';
@@ -48,7 +49,9 @@ export default function Checkout() {
   const onSuccess = async (reference: any, projectId: string) => {
     try {
       if (!user) throw new Error('Authentication required');
-      const idToken = await user.getIdToken();
+      const { data: { session } } = await supabase.auth.getSession();
+      const idToken = session?.access_token;
+      if (!idToken) throw new Error('Authentication session expired. Please sign in again.');
       const response = await fetch('/api/paystack/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
