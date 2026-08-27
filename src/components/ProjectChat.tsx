@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from '../lib/supabaseCompat';
-import { db } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Send, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,16 +13,18 @@ export default function ProjectChat({ projectId, onClose }: { projectId: string,
     if (!projectId || projectId === 'demo') return;
     
     const q = query(
-      collection(db, 'projects', projectId, 'messages'),
+      supabase.from('project_messages'),
       orderBy('createdAt', 'asc')
     );
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMessages(msgs);
-    });
-    
-    return () => unsubscribe();
+    let active = true;
+    const load = async () => {
+      const { data } = await q;
+      if (active) setMessages(data ?? []);
+    };
+    void load();
+    const channel = supabase.channel(`project-chat-${projectId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'project_messages', filter: `project_id=eq.${projectId}` }, () => void load()).subscribe();
+    return () => { active = false; void supabase.removeChannel(channel); };
   }, [projectId]);
 
   useEffect(() => {
@@ -35,13 +36,12 @@ export default function ProjectChat({ projectId, onClose }: { projectId: string,
     if (!newMessage.trim() || !user || projectId === 'demo') return;
     
     try {
-      await addDoc(collection(db, 'projects', projectId, 'messages'), {
+      await supabase.from('project_messages').insert({
         text: newMessage.trim(),
-        senderId: user.uid,
-        senderName: userData?.name || 'User',
-        senderRole: userData?.role || 'student',
-        createdAt: serverTimestamp()
-      });
+        sender_id: user.id,
+        sender_name: userData?.name || 'User',
+        sender_role: userData?.role || 'student',
+        created_at: new Date().toISOString() });
       setNewMessage('');
     } catch (err) {
       console.error("Error sending message:", err);
@@ -64,11 +64,11 @@ export default function ProjectChat({ projectId, onClose }: { projectId: string,
           </div>
         ) : (
           messages.map(msg => {
-            const isMe = msg.senderId === user?.uid;
+            const isMe = msg.sender_id === user?.id;
             return (
               <div key={msg.id} className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
                 <span className="text-[10px] text-muted-foreground mb-1 mx-1 capitalize font-medium">
-                  {msg.senderName} • {msg.senderRole}
+                  {msg.sender_name} • {msg.sender_role}
                 </span>
                 <div className={`p-3 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted text-foreground rounded-bl-sm'}`}>
                   {msg.text}
