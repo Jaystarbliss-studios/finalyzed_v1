@@ -54,3 +54,119 @@
     @apply text-[10px] font-mono tracking-[0.2em] text-muted-foreground uppercase;
   }
 }
+
+
+/* Finalyzed homepage motion layer */
+@keyframes signatureInk {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 420;
+  }
+  10% {
+    opacity: 0.1;
+    stroke-dashoffset: 350;
+  }
+  26% {
+    opacity: 0.32;
+    stroke-dashoffset: 0;
+  }
+  55% {
+    opacity: 0.25;
+    stroke-dashoffset: 0;
+  }
+  72% {
+    opacity: 0.13;
+    stroke-dashoffset: 0;
+  }
+  100% {
+    opacity: 0;
+    stroke-dashoffset: 0;
+  }
+}
+
+.signature-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.95;
+}
+
+.signature-trace {
+  position: absolute;
+  width: 150px;
+  height: 66px;
+  overflow: visible;
+  color: var(--color-primary);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 8px rgba(51, 113, 121, 0.08));
+  opacity: 0;
+  stroke-dasharray: 420;
+  stroke-dashoffset: 420;
+  animation: signatureInk 8s ease-in-out infinite;
+}
+
+.signature-trace .signature-tail {
+  stroke-width: 1.1;
+  opacity: 0.72;
+}
+
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.78) contrast(1.04);
+  transform: scale(1.03);
+}
+
+.hero-video-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(9, 11, 14, 0.94) 0%, rgba(9, 11, 14, 0.76) 36%, rgba(9, 11, 14, 0.34) 72%, rgba(9, 11, 14, 0.58) 100%),
+    linear-gradient(180deg, rgba(9, 11, 14, 0.28) 0%, rgba(9, 11, 14, 0.08) 50%, rgba(9, 11, 14, 0.86) 100%);
+}
+
+.hero-video-vignette {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 160px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .signature-wall {
+    opacity: 0.65;
+  }
+
+  .signature-trace {
+    width: 110px;
+    height: 50px;
+  }
+
+  .hero-video-wash {
+    background:
+      linear-gradient(180deg, rgba(9, 11, 14, 0.48) 0%, rgba(9, 11, 14, 0.76) 50%, rgba(9, 11, 14, 0.96) 100%),
+      linear-gradient(90deg, rgba(9, 11, 14, 0.52), rgba(9, 11, 14, 0.28));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signature-trace {
+    animation: none;
+    opacity: 0.08;
+    stroke-dashoffset: 0;
+  }
+
+  .hero-video {
+    display: none;
+  }
+}
