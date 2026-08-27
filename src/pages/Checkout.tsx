@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Shield, CreditCard, Lock, Zap, Star, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { supabase, createProjectFromSpecification } from '../lib/supabase';
 import { db } from '../lib/supabase';
 import { collection, addDoc, serverTimestamp } from '../lib/supabaseCompat';
 import { usePaystackPayment } from 'react-paystack';
@@ -84,22 +84,24 @@ export default function Checkout() {
 
     setProcessing(true);
     try {
-      const docRef = await addDoc(collection(db, 'projects'), {
-        studentId: user.uid,
-        specialistId,
-        title: spec.projectTitle,
-        type: spec.projectType || 'Standard Academic Project',
-        plan: selectedPlan,
-        baseAmount,
+      const { data: specification, error: specificationError } = await supabase
+        .from('project_specifications')
+        .select('id')
+        .eq('student_id', user.id)
+        .eq('confirmed', true)
+        .maybeSingle();
+      if (specificationError) throw specificationError;
+      if (!specification) throw new Error('Please confirm your project specification before payment.');
+
+      const project = await createProjectFromSpecification(
+        specification.id,
+        selectedPlan as 'basic' | 'standard' | 'premium',
         totalAmount,
-        revisionLimit: planDetails.id === 'basic' ? 3 : planDetails.id === 'standard' ? 5 : 10,
-        specification: spec,
-        status: 'PAYMENT_PENDING',
-        createdAt: serverTimestamp(),
-      });
+        specialistId || undefined,
+      );
 
       initializePayment({
-        onSuccess: (ref) => onSuccess(ref, docRef.id),
+        onSuccess: (ref) => onSuccess(ref, project.id),
         onClose: () => setProcessing(false),
       });
     } catch (error) {
