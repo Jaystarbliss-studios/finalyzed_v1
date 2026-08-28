@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /start-project
+Disallow: /checkout
+Disallow: /workspace/
+Disallow: /qa-workspace/
+Disallow: /wallet
 
 Sitemap: https://finalyzed.netlify.app/sitemap.xml
