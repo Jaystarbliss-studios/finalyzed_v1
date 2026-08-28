@@ -194,3 +194,21 @@
     display: none;
   }
 }
+
+
+/* Accessible form controls: visible on Finalyzed's dark surfaces and stable while typing. */
+@layer components {
+  .form-input {
+    width: 100%; min-height: 46px; border-radius: 0.75rem;
+    border: 1px solid #3a4652; background: #10151a; color: #fafafa;
+    padding: 0.7rem 0.9rem; outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+  .form-input::placeholder { color: #77818d; opacity: 1; }
+  .form-input:hover { border-color: #53616d; background: #12181e; }
+  .form-input:focus { border-color: #337179; box-shadow: 0 0 0 3px rgba(51,113,121,.22); background: #0f1519; }
+  .form-input:disabled { opacity: .55; cursor: not-allowed; }
+  textarea.form-input { min-height: 120px; line-height: 1.55; }
+  select.form-input { appearance: auto; }
+  input[type="checkbox"] { accent-color: #337179; }
+}
