@@ -31,7 +31,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); const [profileOpen,setProfileOpen]=useState(false); const [deleteOpen,setDeleteOpen]=useState(false); const [deleteText,setDeleteText]=useState(''); const [deleteBusy,setDeleteBusy]=useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-  const handleDeleteAccount = async () => { if(deleteText.trim().toLowerCase()!=='delete') return; setDeleteBusy(true); const {error}=await supabase.rpc('delete_my_account',{p_confirmation:deleteText}); setDeleteBusy(false); if(error){alert(error.message);return;} await supabase.auth.signOut(); navigate('/'); };\n\n  const handleLogout = async () => {
+  const handleDeleteAccount = async () => { if(deleteText.trim().toLowerCase()!=='delete') return; setDeleteBusy(true); const {error}=await supabase.rpc('delete_my_account',{p_confirmation:deleteText}); setDeleteBusy(false); if(error){alert(error.message);return;} await supabase.auth.signOut(); navigate('/'); };
+
+  const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
   };
