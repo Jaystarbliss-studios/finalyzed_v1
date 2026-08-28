@@ -57,6 +57,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const useAppLayout = user && !isStrictlyPublic;
 
+  // Project specification is a student-only workflow. Keep privileged/internal roles
+  // from reaching it even if they manually type the URL or follow an old link.
+  if (user && location.pathname === '/start-project' && role !== 'student') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   if (!useAppLayout) {
     // --- MARKETING LAYOUT (Logged out, or viewing homepage) ---
     return (
