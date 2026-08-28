@@ -65,6 +65,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Checkout is the final student commissioning step. Keep writers and
+  // project managers out even if they reach the route directly.
+  if (user && location.pathname === '/checkout' && role !== 'student') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   if (!useAppLayout) {
     // --- MARKETING LAYOUT (Logged out, or viewing homepage) ---
     return (
