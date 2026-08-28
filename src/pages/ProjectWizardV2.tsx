@@ -19,7 +19,8 @@ function WizardStepTitle({n,title,text}:{n:number;title:string;text:string}){ret
 export default function ProjectWizardV2() {
   const { user, userData } = useAuth(); const navigate = useNavigate(); const [searchParams] = useSearchParams();
   if (!user) return <Navigate to="/login" replace state={{ from: '/start-project' }} />;
-  if (userData && userData.role !== 'student') return <Navigate to="/dashboard" replace />;
+  if (!user) return <Navigate to="/login" replace state={{ from: '/start-project' }} />;
+  if (userData && userData.role !== 'student') return <Navigate to="/dashboard" replace />;;
   const [step,setStep] = useState(0); const [data,setData] = useState<Record<string,any>>(DEFAULTS); const [saving,setSaving] = useState(false); const [saved,setSaved] = useState(false); const [confirmed,setConfirmed] = useState(false); const [errors,setErrors] = useState<string[]>([]); const [loaded,setLoaded] = useState(false);
   const specialistId = localStorage.getItem('finalyzed_selected_specialist') || '';
   const templateId = searchParams.get('template') || '';
