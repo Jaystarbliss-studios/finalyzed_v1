@@ -99,6 +99,40 @@ export async function saveProjectSpecification(ownerId: string, specification: R
   return saved.id;
 }
 
+function fromRow(row: any): ProjectSpecification {
+  if (!row) return row;
+  const margins = String(row.margins || '');
+  const parts = margins.split(',').map((x:string)=>x.trim());
+  const value=(prefix:string)=>parts.find((x:string)=>x.toLowerCase().startsWith(prefix))?.split(/\\s+/).slice(1).join(' ') || '';
+  return {
+    ...row,
+    fullName: row.student_full_name ?? row.full_name ?? '',
+    matricNumber: row.matric_number ?? '',
+    degree: row.degree_award ?? '',
+    projectTitle: row.project_title ?? '',
+    projectType: row.project_type ?? '',
+    institution: row.institution_name ?? '',
+    department: row.department_name ?? '',
+    fontFamily: row.font ?? '',
+    bodyFontSize: row.font_size ?? '',
+    lineSpacing: row.line_spacing ?? '',
+    marginLeft: row.margin_left ?? value('left'),
+    marginRight: row.margin_right ?? value('right'),
+    marginTop: row.margin_top ?? value('top'),
+    marginBottom: row.margin_bottom ?? value('bottom'),
+    citationStyle: row.citation_style ?? '',
+    chapterCount: row.chapter_count ?? 5,
+    standardsBodies: row.standards_bodies ?? '',
+    subjectArea: row.core_subject_matter ?? '',
+    expectedOutcome: row.target_outcome ?? '',
+    scope: row.scope ?? '',
+    specialInstructions: row.special_instructions ?? '',
+    status: row.confirmed ? 'CONFIRMED' : 'DRAFT',
+    updatedAt: row.updated_at,
+    confirmedAt: row.confirmed_at
+  };
+}
+
 export async function loadProjectSpecification(ownerId: string): Promise<ProjectSpecification | null> {
   // Prefer the latest editable draft. If there is none, load the latest confirmed
   // specification so a returning student can inspect their last commission.
@@ -111,7 +145,7 @@ export async function loadProjectSpecification(ownerId: string): Promise<Project
     .limit(1)
     .maybeSingle();
   if (draftError) throw draftError;
-  if (draft) return draft as ProjectSpecification;
+  if (draft) return fromRow(draft);
 
   const { data, error } = await supabase
     .from('project_specifications')
@@ -122,7 +156,7 @@ export async function loadProjectSpecification(ownerId: string): Promise<Project
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return data as ProjectSpecification | null;
+  return data ? fromRow(data) : null;
 }
 
 export function validateSpecification(spec: Record<string, unknown>): string[] {
