@@ -18,9 +18,6 @@ function WizardStepTitle({n,title,text}:{n:number;title:string;text:string}){ret
 
 export default function ProjectWizardV2() {
   const { user, userData } = useAuth(); const navigate = useNavigate(); const [searchParams] = useSearchParams();
-  if (!user) return <Navigate to="/login" replace state={{ from: '/start-project' }} />;
-  if (!user) return <Navigate to="/login" replace state={{ from: '/start-project' }} />;
-  if (userData && userData.role !== 'student') return <Navigate to="/dashboard" replace />;;
   const [step,setStep] = useState(0); const [data,setData] = useState<Record<string,any>>(DEFAULTS); const [saving,setSaving] = useState(false); const [saved,setSaved] = useState(false); const [confirmed,setConfirmed] = useState(false); const [errors,setErrors] = useState<string[]>([]); const [loaded,setLoaded] = useState(false);
   const specialistId = localStorage.getItem('finalyzed_selected_specialist') || '';
   const templateId = searchParams.get('template') || '';
@@ -40,6 +37,9 @@ export default function ProjectWizardV2() {
 
   const summary=useMemo(()=>[['Title',data.projectTitle],['Institution',data.institution],['Department',data.department],['Project Type',data.projectType],['Target Pages',data.targetPages||data.maxPages],['Citation',data.citationStyle],['Chapters',data.chapterCount],['Specialist',specialistId?'Selected specialist':'To be assigned']], [data,specialistId]);
   const chapterCount=Math.min(8,Math.max(1,Number(data.chapterCount)||5));
+
+  if (!user) return <Navigate to="/login" replace state={{ from: '/start-project' }} />;
+  if (userData && userData.role !== 'student') return <Navigate to="/dashboard" replace />;
 
   const content=()=>{switch(step){
     case 0:return <><WizardStepTitle n={1} title="Student information" text="Confirm the academic identity used throughout the project."/><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><FieldInput data={data} update={update} label="Full name" k="fullName"/><FieldInput data={data} update={update} label="Matriculation / registration number" k="matricNumber"/><FieldInput data={data} update={update} label="Institution" k="institution"/><FieldInput data={data} update={update} label="Faculty / school" k="faculty"/><FieldInput data={data} update={update} label="Department" k="department"/><FieldInput data={data} update={update} label="Degree / award" k="degree"/><FieldInput data={data} update={update} label="Project supervisor" k="supervisor"/><FieldInput data={data} update={update} label="Head of department" k="hod"/><FieldInput data={data} update={update} label="Submission month" k="submissionMonth" placeholder="e.g. August"/><FieldInput data={data} update={update} label="Submission year" k="submissionYear" type="number" placeholder="e.g. 2026"/></div></>;
