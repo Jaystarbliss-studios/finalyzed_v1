@@ -63,8 +63,8 @@ export default function Marketplace() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="bento-card p-6 h-72 animate-pulse"><div className="w-14 h-14 bg-muted rounded-xl mb-5" /><div className="w-2/3 h-5 bg-muted rounded mb-3" /><div className="w-full h-4 bg-muted rounded mb-2" /><div className="w-1/2 h-4 bg-muted rounded" /></div>)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+          {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="bento-card p-6 h-72 animate-pulse"><div className="w-10 h-10 bg-muted rounded-xl mb-3" /><div className="w-2/3 h-5 bg-muted rounded mb-3" /><div className="w-full h-4 bg-muted rounded mb-2" /><div className="w-1/2 h-4 bg-muted rounded" /></div>)}
         </div>
       ) : filteredSpecialists.length === 0 ? (
         <div className="bento-card p-10 md:p-16 flex flex-col items-center justify-center text-center">
@@ -78,29 +78,29 @@ export default function Marketplace() {
           {filteredSpecialists.map((specialist, idx) => {
             const specialties = specialist.specialties || [];
             return (
-              <motion.article key={specialist.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="bento-card p-6 flex flex-col hover:border-primary/40 transition-all group">
+              <motion.article key={specialist.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="bento-card p-3 md:p-4 flex flex-col hover:border-primary/40 transition-all group">
                 <div className="flex justify-between items-start mb-5">
                   <div className="w-14 h-14 rounded-2xl overflow-hidden border border-border bg-primary/5 shrink-0">
-                    {specialist.imageUrl ? <img src={specialist.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><User className="w-6 h-6 text-primary" /></div>}
+                    {specialist.imageUrl ? <img src={specialist.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><User className="w-4 h-4 text-primary" /></div>}
                   </div>
                   {specialist.isVerified ? <span className="bg-primary/10 border border-primary/20 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-primary" /><span className="text-[9px] font-bold text-primary uppercase tracking-wider">Verified</span></span> : <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground border border-border px-2.5 py-1.5 rounded-lg">Unverified</span>}
                 </div>
 
-                <h2 className="text-lg font-bold">{specialist.name}</h2>
-                {specialist.bio && <p className="text-sm text-muted-foreground mt-2 line-clamp-2 leading-relaxed">{specialist.bio}</p>}
+                <h2 className="text-sm md:text-base font-bold">{specialist.name}</h2>
+                {specialist.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-snug text-xs">{specialist.bio}</p>}
 
-                <div className="flex flex-wrap gap-1.5 mt-4">
+                <div className="flex flex-wrap gap-1 mt-3">
                   {specialties.slice(0, 3).map(spec => <span key={spec} className="text-[10px] px-2 py-1 bg-muted border border-border rounded-md text-muted-foreground">{spec}</span>)}
                   {specialties.length > 3 && <span className="text-[10px] px-2 py-1 bg-muted border border-border rounded-md text-muted-foreground">+{specialties.length - 3}</span>}
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-border">
+                <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border">
                   <Metric icon={<Star className="w-3.5 h-3.5" />} value={typeof specialist.rating === 'number' ? specialist.rating.toFixed(1) : '—'} label={`${specialist.reviews || 0} reviews`} />
                   <Metric icon={<CheckCircle className="w-3.5 h-3.5" />} value={specialist.completedProjects?.toString() || '—'} label="completed" />
                   <Metric icon={<Clock className="w-3.5 h-3.5" />} value={specialist.averageDeliveryDays ? `${specialist.averageDeliveryDays}d` : '—'} label="avg delivery" />
                 </div>
 
-                <Link to={`/specialist/${specialist.id}`} className="btn-secondary w-full py-3 flex items-center justify-center gap-2 text-sm mt-6 group-hover:border-primary group-hover:text-primary transition-colors">View Profile <ArrowRight className="w-4 h-4" /></Link>
+                <Link to={`/specialist/${specialist.id}`} className="btn-secondary w-full py-2 flex items-center justify-center gap-1 text-xs mt-6 group-hover:border-primary group-hover:text-primary transition-colors">View Profile <ArrowRight className="w-4 h-4" /></Link>
               </motion.article>
             );
           })}
