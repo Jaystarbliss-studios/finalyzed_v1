@@ -74,7 +74,7 @@ async function startServer() {
       const currency = String(data.data.currency || '');
       const customerEmail = String(data.data.customer?.email || '').toLowerCase();
       const accountEmail = String(user.email || '').toLowerCase();
-      if (!Number.isFinite(paidNaira) || Math.round(paidNaira) !== expectedNaira || currency !== 'NGN') return res.status(400).json({ error: 'Payment amount or currency does not match the project' });
+      if (!Number.isFinite(paidNaira) || Math.round(paidNaira) !== expectedGrossNaira || currency !== 'NGN') return res.status(400).json({ error: 'Payment amount or currency does not match the project' });
       if (customerEmail && accountEmail && customerEmail !== accountEmail) return res.status(400).json({ error: 'Payment customer does not match the authenticated account' });
 
       const { data: payment, error: paymentError } = await client.rpc('record_verified_project_payment', {
@@ -110,6 +110,7 @@ async function startServer() {
       if (!response.ok || !data.status || data.data?.status !== 'success') return res.status(400).json({ error: 'Transaction verification failed' });
       const paidNaira = Number(data.data.amount) / 100;
       const expectedNaira = points * 10;
+      const expectedGrossNaira = Math.round(expectedNaira * 1.02);
       const currency = String(data.data.currency || '');
       const customerEmail = String(data.data.customer?.email || '').toLowerCase();
       const accountEmail = String(user.email || '').toLowerCase();
@@ -119,7 +120,7 @@ async function startServer() {
         p_user_id: user.id, p_points: points, p_amount_ngn: expectedNaira, p_reference: reference,
       });
       if (error) throw error;
-      return res.json({ success: true, points, amountNgn: expectedNaira, currency, wallet });
+      return res.json({ success: true, points, amountNgn: expectedNaira, feeNgn: expectedGrossNaira - expectedNaira, chargedNgn: expectedGrossNaira, currency, wallet });
     } catch (error: any) {
       if (error?.message === 'UNAUTHENTICATED') return res.status(401).json({ error: 'Authentication required' });
       if (error?.message === 'SERVER_NOT_CONFIGURED') return res.status(503).json({ error: 'Payment service is not configured.' });
