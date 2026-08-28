@@ -62,3 +62,27 @@ $function$;
 
 revoke execute on function public.add_institution(text,text,text) from anon;
 grant execute on function public.add_institution(text,text,text) to authenticated;
+
+
+create or replace function public.admin_import_institutions(p_institutions jsonb)
+returns jsonb language plpgsql security definer set search_path=public as $function$
+declare item jsonb; clean_name text; inserted_count integer:=0; updated_count integer:=0;
+begin
+ if not public.is_finalyzed_admin() then raise exception 'ADMIN_ONLY'; end if;
+ if jsonb_typeof(p_institutions)<>'array' then raise exception 'INVALID_IMPORT'; end if;
+ for item in select * from jsonb_array_elements(p_institutions) loop
+  clean_name:=regexp_replace(trim(coalesce(item->>'name','')),'\s+',' ','g');
+  if length(clean_name)>=3 then
+   if exists(select 1 from public.institutions where lower(trim(name))=lower(clean_name)) then
+    update public.institutions set ownership=coalesce(nullif(item->>'ownership',''),'other'),country='Nigeria',source='NUC',verified=true where lower(trim(name))=lower(clean_name);
+    updated_count:=updated_count+1;
+   else
+    insert into public.institutions(name,country,ownership,source,verified) values(clean_name,'Nigeria',case when item->>'ownership' in ('federal','state','private') then item->>'ownership' else 'other' end,'NUC',true);
+    inserted_count:=inserted_count+1;
+   end if;
+  end if;
+ end loop;
+ return jsonb_build_object('inserted',inserted_count,'updated',updated_count,'total',inserted_count+updated_count);
+end;$function$;
+revoke execute on function public.admin_import_institutions(jsonb) from anon;
+grant execute on function public.admin_import_institutions(jsonb) to authenticated;
