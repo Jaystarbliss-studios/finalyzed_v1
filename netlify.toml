@@ -7,6 +7,18 @@
   node_bundler = "esbuild"
 
 [[redirects]]
+  from = "/api/paystack/verify"
+  to = "/.netlify/functions/paystack-verify"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/paystack/verify-points"
+  to = "/.netlify/functions/paystack-verify-points"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
