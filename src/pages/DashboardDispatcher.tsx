@@ -40,8 +40,8 @@ function PendingCapability({ capability }: { capability: string }) {
           {isEditor ? <ShieldCheck className="w-8 h-8 text-primary" /> : <Briefcase className="w-8 h-8 text-primary" />}
         </div>
         <p className="text-xs font-bold tracking-[0.2em] uppercase text-primary">Application received</p>
-        <h1 className="text-2xl md:text-3xl font-bold mt-2">Your {isEditor ? 'Editor' : 'Project Writer'} application is under review</h1>
-        <p className="text-muted-foreground mt-4 leading-relaxed">Finalyzed will review your submitted information before activating this capability. You cannot accept projects or perform quality assurance until approval.</p>
+        <h1 className="text-2xl md:text-3xl font-bold mt-2">Your {isEditor ? 'Project Manager' : 'Project Writer'} application is under review</h1>
+        <p className="text-muted-foreground mt-4 leading-relaxed">Finalyzed will review your submitted information before activating this capability. Project Managers handle quality assurance and revision oversight. You cannot accept projects or perform quality assurance until approval.</p>
         <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4 flex items-center gap-3 text-left"><Clock3 className="w-5 h-5 text-primary shrink-0" /><div><p className="text-sm font-semibold">Status: Pending review</p><p className="text-xs text-muted-foreground mt-0.5">You’ll be notified when your application is approved.</p></div></div>
         <Link to="/" className="btn-secondary inline-flex items-center gap-2 mt-7">Return to Finalyzed <ArrowRight className="w-4 h-4" /></Link>
       </div>
