@@ -86,3 +86,20 @@ begin
 end;$function$;
 revoke execute on function public.admin_import_institutions(jsonb) from anon;
 grant execute on function public.admin_import_institutions(jsonb) to authenticated;
+
+
+create table if not exists public.project_specifications (id uuid primary key default gen_random_uuid(),student_id uuid not null references public.profiles(id) on delete cascade,institution_id uuid references public.institutions(id) on delete set null,source_template_id uuid references public.institution_templates(id) on delete set null,source_template_name text,title text,specification_schema jsonb not null default '[]'::jsonb,answers jsonb not null default '{}'::jsonb,status text not null default 'draft' check(status in ('draft','submitted','confirmed','archived')),is_complete boolean not null default false,submitted_at timestamptz,created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+create index if not exists project_specifications_student_idx on public.project_specifications(student_id,updated_at desc);
+create index if not exists project_specifications_institution_idx on public.project_specifications(institution_id,status);
+alter table public.project_specifications enable row level security;
+drop policy if exists "students manage own specifications" on public.project_specifications;
+create policy "students manage own specifications" on public.project_specifications for all using(student_id=auth.uid() or public.is_finalyzed_admin()) with check(student_id=auth.uid() or public.is_finalyzed_admin());
+alter table public.institution_templates add column if not exists created_by uuid references public.profiles(id) on delete set null;
+alter table public.institution_templates add column if not exists is_student_derived boolean not null default false;
+alter table public.institution_templates add column if not exists template_source_specification_id uuid;
+alter table public.institution_templates add column if not exists created_at timestamptz not null default now();
+alter table public.institution_templates add column if not exists updated_at timestamptz not null default now();
+create or replace function public.create_template_from_completed_specification(p_specification_id uuid) returns uuid language plpgsql security definer set search_path=public as $function$
+declare s public.project_specifications; tid uuid; tname text;
+begin select * into s from public.project_specifications where id=p_specification_id and student_id=auth.uid() and status='confirmed' and is_complete=true; if not found then raise exception 'SPECIFICATION_NOT_COMPLETE'; end if; tname:=coalesce(nullif(trim(s.source_template_name),''),'Template for '||coalesce((select name from public.institutions where id=s.institution_id),'institution')); insert into public.institution_templates(institution_id,name,description,specification_schema,specification_defaults,verified,created_by,is_student_derived,template_source_specification_id) values(s.institution_id,tname,'Student-confirmed reusable project specification template',s.specification_schema,s.answers,false,auth.uid(),true,s.id) returning id into tid; return tid; end;$function$;
+grant execute on function public.create_template_from_completed_specification(uuid) to authenticated;
