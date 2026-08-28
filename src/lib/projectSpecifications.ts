@@ -159,8 +159,8 @@ export async function loadProjectSpecification(ownerId: string): Promise<Project
   return data ? fromRow(data) : null;
 }
 
-export function validateSpecification(spec: Record<string, unknown>): string[] {
-  const required: Array<[string, string]> = [['fullName', 'Full name'], ['matricNumber', 'Matriculation/registration number'], ['institution', 'Institution'], ['department', 'Department'], ['degree', 'Degree/award'], ['projectTitle', 'Approved project title'], ['projectType', 'Project type'], ['citationStyle', 'Citation style'], ['methodology', 'Methodology']];
+export function validateSpecification(spec: Record<string, unknown>, templateSchema?: Array<{title:string;fields:Array<{key:string;label:string;required?:boolean}>}>): string[] {
+  const required: Array<[string, string]> = templateSchema?.length ? templateSchema.flatMap(step=>step.fields.filter(field=>field.required).map(field=>[field.key,field.label] as [string,string])) : [['fullName', 'Full name'], ['matricNumber', 'Matriculation/registration number'], ['institution', 'Institution'], ['department', 'Department'], ['degree', 'Degree/award'], ['projectTitle', 'Approved project title'], ['projectType', 'Project type'], ['citationStyle', 'Citation style'], ['methodology', 'Methodology']];
   return required.filter(([key]) => !String(spec[key] ?? '').trim()).map(([, label]) => `${label} is required.`);
 }
 
