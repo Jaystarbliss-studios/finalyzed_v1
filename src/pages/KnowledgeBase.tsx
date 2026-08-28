@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Building2, CheckCircle, AlertCircle, GraduationCap, ShieldCheck } from 'lucide-react';
+import { Search, Building2, CheckCircle, AlertCircle, GraduationCap, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -124,7 +124,7 @@ export default function KnowledgeBase() {
                     <span className="text-xs uppercase tracking-wider font-bold text-primary">Prepaid template</span>
                     <p className="font-semibold mt-1">{t.name}</p>
                     <p className="text-xs text-muted-foreground mt-1">Used {t.usage_count || 0} times</p>
-                    <Link to={'/start-project?template=' + t.id} className="btn-primary inline-flex mt-3 text-xs px-3 py-2">Use template</Link>
+                    <div className="flex gap-2 mt-3"><Link to={'/start-project?template=' + t.id} className="btn-primary inline-flex text-xs px-3 py-2">Use template</Link><Link to={'/start-project?template=' + t.id + '&tweak=1'} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-muted"><SlidersHorizontal className="w-3 h-3"/>Tweak template</Link></div>
                   </div>
                 ))}
               </div>
