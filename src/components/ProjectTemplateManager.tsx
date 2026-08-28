@@ -50,4 +50,20 @@ export default function ProjectTemplateManager(){
   {message&&<div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary"/>{message}</div>}
   <button onClick={()=>void save()} disabled={saving||!selectedInstitution||!name.trim()} className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50"><Save className="w-4 h-4"/>{saving?'Publishing…':'Publish Project Template'}</button>
  </section>;
-}
+}  const syncNUC=async()=>{
+    setSyncing(true);
+    setMessage('Scanning the current NUC federal, state and private university lists…');
+    try {
+      const r=await fetch('/.netlify/functions/nuc-universities');
+      const payload=await r.json();
+      if(!r.ok) throw new Error(payload.error||'NUC sync failed.');
+      const result=await supabase.rpc('admin_import_institutions',{p_institutions:payload.institutions});
+      if(result.error) throw result.error;
+      await loadInstitutions();
+      setMessage('NUC sync complete: '+String(result.data?.inserted||0)+' added, '+String(result.data?.updated||0)+' refreshed.');
+    } catch(e) {
+      setMessage(e instanceof Error?e.message:'NUC sync failed.');
+    } finally {
+      setSyncing(false);
+    }
+  };
