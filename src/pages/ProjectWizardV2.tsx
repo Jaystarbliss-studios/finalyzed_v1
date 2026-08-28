@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Save, ShieldCheck } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { loadProjectSpecification, saveProjectSpecification, validateSpecification } from '../lib/projectSpecifications';
 import { supabase } from '../lib/supabase';
@@ -18,6 +18,7 @@ function WizardStepTitle({n,title,text}:{n:number;title:string;text:string}){ret
 
 export default function ProjectWizardV2() {
   const { user, userData } = useAuth(); const navigate = useNavigate(); const [searchParams] = useSearchParams();
+  if (userData && userData.role !== 'student') return <Navigate to="/dashboard" replace />;
   const [step,setStep] = useState(0); const [data,setData] = useState<Record<string,any>>(DEFAULTS); const [saving,setSaving] = useState(false); const [saved,setSaved] = useState(false); const [confirmed,setConfirmed] = useState(false); const [errors,setErrors] = useState<string[]>([]); const [loaded,setLoaded] = useState(false);
   const specialistId = localStorage.getItem('finalyzed_selected_specialist') || '';
   const templateId = searchParams.get('template') || '';
