@@ -48,10 +48,10 @@ export default function ProjectWizardV2() {
 
   const update=(key:string,value:any)=>{setData(p=>({...p,[key]:value}));setErrors([]);};
   const required:Record<number,Array<[string,string]>>={0:[['fullName','Full name'],['matricNumber','Matriculation/registration number'],['institution','Institution'],['department','Department'],['degree','Degree/award']],1:[['projectTitle','Approved project title'],['projectType','Project type']],3:[['fontFamily','Font family'],['lineSpacing','Line spacing']],6:[['citationStyle','Citation style']],7:[['methodology','Methodology/design approach']]};
-  const validateStep=()=>{const missing=(required[step]||[]).filter(([k])=>!String(data[k]??'').trim()).map(([,v])=>`${v} is required.`);setErrors(missing);return !missing.length;};
+  const validateStep=()=>{const templateRequired=templateSchema?.[step]?.fields.filter((field:any)=>field.required).map((field:any)=>[field.key,field.label] as [string,string])||[];const missing=(templateSchema?.length?templateRequired:(required[step]||[])).filter(([k])=>!String(data[k]??'').trim()).map(([,v])=>`${v} is required.`);setErrors(missing);return !missing.length;};
   const activeSteps=templateSchema?.map(s=>s.title)||STEPS;
   const next=()=>{if(validateStep())setStep(s=>Math.min(activeSteps.length-1,s+1));};
-  const confirm=async()=>{if(!user||!confirmed)return;const missing=validateSpecification(data);if(missing.length){setErrors(missing);setStep(0);return;}try{setSaving(true);await saveProjectSpecification(user.id,{...data,selectedSpecialistId:specialistId},'CONFIRMED');localStorage.setItem('finalyzed_project_confirmed',JSON.stringify({...data,selectedSpecialistId:specialistId}));navigate('/checkout');}catch(e){console.error(e);setErrors(['We could not save your confirmed specification. Please try again.']);}finally{setSaving(false);}};
+  const confirm=async()=>{if(!user||!confirmed)return;const missing=validateSpecification(data,templateSchema||undefined);if(missing.length){setErrors(missing);setStep(0);return;}try{setSaving(true);await saveProjectSpecification(user.id,{...data,selectedSpecialistId:specialistId},'CONFIRMED');localStorage.setItem('finalyzed_project_confirmed',JSON.stringify({...data,selectedSpecialistId:specialistId}));navigate('/checkout');}catch(e){console.error(e);setErrors(['We could not save your confirmed specification. Please try again.']);}finally{setSaving(false);}};
 
 
 
