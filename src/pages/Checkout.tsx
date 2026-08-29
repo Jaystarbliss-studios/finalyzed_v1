@@ -39,7 +39,7 @@ export default function Checkout() {
     reference: `FZ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     email: user?.email || '',
     amount: totalAmount * 100,
-    metadata: { projectId: '', studentId: user?.id || '' },
+    metadata: { custom_fields: [] },
     publicKey: (import.meta as any).env.VITE_PAYSTACK_PUBLIC_KEY || '',
   };
 
@@ -87,8 +87,9 @@ export default function Checkout() {
         .from('project_specifications')
         .select('id')
         .eq('student_id', user.id)
-        .eq('confirmed', true)
-        .order('confirmed_at', { ascending: false })
+        .eq('status', 'confirmed')
+        .eq('is_complete', true)
+        .order('submitted_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (specificationError) throw specificationError;
@@ -102,7 +103,10 @@ export default function Checkout() {
       );
 
       initializePayment({
-        metadata: { projectId: project.id, studentId: user.id },
+        config: { metadata: { custom_fields: [
+          { display_name: 'Project ID', variable_name: 'project_id', value: project.id },
+          { display_name: 'Student ID', variable_name: 'student_id', value: user.id },
+        ] } },
         onSuccess: (ref) => onSuccess(ref, project.id),
         onClose: () => setProcessing(false),
       });
