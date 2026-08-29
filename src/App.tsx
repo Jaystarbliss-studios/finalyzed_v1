@@ -380,8 +380,8 @@ export default function App() {
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/knowledge-base" element={<KnowledgeBase />} />
             <Route path="/admin/templates" element={<AdminTemplates />} />
-            <Route path="/admin/control" element={<AdminControlCenter />} />
-            <Route path="/bank-details" element={<BankDetails />} />
+            <Route path="/admin/control" element={isAdmin?<AdminControlCenter />:<Navigate to="/dashboard" replace />} />
+            <Route path="/bank-details" element={(role==='writer'||role==='editor')?<BankDetails />:<Navigate to="/wallet" replace />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
