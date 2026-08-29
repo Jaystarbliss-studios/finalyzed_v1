@@ -380,8 +380,8 @@ export default function App() {
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/knowledge-base" element={<KnowledgeBase />} />
             <Route path="/admin/templates" element={<AdminTemplates />} />
-            <Route path="/admin/control" element={isAdmin?<AdminControlCenter />:<Navigate to="/dashboard" replace />} />
-            <Route path="/bank-details" element={(role==='writer'||role==='editor')?<BankDetails />:<Navigate to="/wallet" replace />} />
+            <Route path="/admin/control" element={<AdminOnly><AdminControlCenter /></AdminOnly>} />
+            <Route path="/bank-details" element={<SpecialistOnly><BankDetails /></SpecialistOnly>} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
@@ -392,3 +392,6 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+function AdminOnly({children}:{children:React.ReactNode}){const {userData}=useAuth();return userData?.role==='admin'?<>{children}</>:<Navigate to="/dashboard" replace/>;}
+function SpecialistOnly({children}:{children:React.ReactNode}){const {userData}=useAuth();return userData?.role==='writer'||userData?.role==='editor'?<>{children}</>:<Navigate to="/wallet" replace/>;}
