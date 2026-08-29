@@ -1,0 +1,2 @@
+-- Finalyzed uses 1 point = ₦10. The requested ₦500,000 demo points therefore equals 50,000 points.
+do $$ declare admin_id uuid; seed_ref text:='DEMO-ADMIN-FUND-20260829'; begin select id into admin_id from public.profiles where role='admin' and account_status='approved' order by created_at asc limit 1; if admin_id is not null then update public.wallet_transactions set points=50000 where user_id=admin_id and reference=seed_ref; update public.wallets set points_balance=50000,updated_at=now() where user_id=admin_id and balance_ngn>=5000000; end if; end $$;
