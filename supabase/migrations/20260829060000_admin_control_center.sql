@@ -73,7 +73,7 @@ with cash as (
 ), fees as (
  select coalesce(sum(amount_ngn),0)::bigint revenue from platform_fees
 ), withdrawals as (
- select coalesce(sum(amount_ngn),0)::bigint paid from public.withdrawals where status in ('completed','processing')
+ select coalesce(sum(amount_ngn),0)::bigint paid from public.withdrawals where public.withdrawals.status in ('completed','processing')
 ), months as (
  select to_char(date_trunc('month',pay.created_at),'Mon') name, date_trunc('month',pay.created_at) bucket,
    coalesce(sum(case when pay.status='completed' then pay.amount_ngn else 0 end),0)::bigint revenue,
@@ -94,8 +94,8 @@ select jsonb_build_object(
    'editors',(select count(*) from profiles where role='editor'),
    'admins',(select count(*) from profiles where role='admin')
  ),
- 'withdrawal_requests',(select count(*) from withdrawals where status='pending'),
- 'open_disputes',(select count(*) from project_disputes where status='open')
+ 'withdrawal_requests',(select count(*) from public.withdrawals where public.withdrawals.status='pending'),
+ 'open_disputes',(select count(*) from public.project_disputes where public.project_disputes.status='open')
 ); $$;
 grant execute on function public.finalyzed_admin_analytics() to authenticated;
 
