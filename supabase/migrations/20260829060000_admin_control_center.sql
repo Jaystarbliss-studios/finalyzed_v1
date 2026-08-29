@@ -148,3 +148,21 @@ begin
  return r;
 end; $$;
 grant execute on function public.update_bank_account(uuid,text,text,text,text) to authenticated;
+
+
+create or replace function public.finalyzed_admin_stats()
+returns jsonb language sql security definer set search_path=public as $$
+select jsonb_build_object(
+ 'students',(select count(*) from profiles where role='student'),
+ 'writers',(select count(*) from profiles where role='writer'),
+ 'managers',(select count(*) from profiles where role='editor'),
+ 'admins',(select count(*) from profiles where role='admin'),
+ 'approved_writers',(select count(*) from profiles where role='writer' and account_status='approved'),
+ 'approved_managers',(select count(*) from profiles where role='editor' and account_status='approved'),
+ 'pending_projects',(select count(*) from projects where status in ('paid','payment_pending','assigned','in_progress','submitted_for_review','editor_correction_required','revision_requested','revision_in_progress')),
+ 'completed_projects',(select count(*) from projects where status='completed'),
+ 'pending_revisions',(select count(*) from project_revisions where status in ('pending','accepted','in_progress')),
+ 'cash_revenue_ngn',(select coalesce(sum(amount_ngn),0) from payments where status='completed'),
+ 'points_revenue_ngn',(select coalesce(sum(amount_ngn),0) from wallet_transactions where transaction_type='points_purchase'),
+ 'total_revenue_ngn',(select coalesce(sum(amount_ngn),0) from payments where status='completed')+(select coalesce(sum(amount_ngn),0) from wallet_transactions where transaction_type='points_purchase')
+); $$;
