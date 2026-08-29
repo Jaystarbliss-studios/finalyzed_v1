@@ -1,0 +1,10 @@
+revoke execute on function public.add_institution(text,text,text) from anon,authenticated;
+grant execute on function public.add_institution(text,text,text) to authenticated;
+revoke execute on function public.add_institution(text,text,text,text) from anon;
+grant execute on function public.add_institution(text,text,text,text) to authenticated;
+revoke execute on function public.admin_import_institutions(jsonb) from anon;
+grant execute on function public.admin_import_institutions(jsonb) to authenticated;
+revoke execute on function public.create_template_from_completed_specification(uuid) from anon;
+grant execute on function public.create_template_from_completed_specification(uuid) to authenticated;
+revoke execute on function public.use_institution_template(uuid) from anon;
+grant execute on function public.use_institution_template(uuid) to authenticated;
