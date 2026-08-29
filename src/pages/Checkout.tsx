@@ -94,7 +94,7 @@ export default function Checkout() {
   const handlePayment = async () => {
     if (!user) return navigate('/login');
     if (!spec?.projectTitle) return navigate('/start-project');
-    if (!config.publicKey) {
+    if (!DEMO_MODE && !config.publicKey) {
       alert('Paystack is not configured yet. Please add VITE_PAYSTACK_PUBLIC_KEY to the environment.');
       return;
     }
