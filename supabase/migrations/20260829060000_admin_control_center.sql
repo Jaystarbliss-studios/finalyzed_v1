@@ -38,7 +38,7 @@ begin
      coalesce((select jsonb_agg(jsonb_build_object('id',pr.id,'title',pr.title,'status',pr.status,'price_ngn',pr.price_ngn,'created_at',pr.created_at) order by pr.created_at desc) from projects pr where (p.role='writer' and pr.writer_id=p.id or p.role='editor' and pr.editor_id=p.id) and pr.status not in ('completed','cancelled') limit 5),'[]'::jsonb) current_projects,
      coalesce((select jsonb_build_object('bank_name',b.bank_name,'account_name',b.account_name,'account_number_last4',right(b.account_number,4),'verified',b.verified,'is_default',b.is_default) from bank_accounts b where b.user_id=p.id order by b.is_default desc,b.updated_at desc limit 1),'null'::jsonb) bank_account
    from profiles p left join public_profiles pp on pp.id=p.id
-   where p.role=p_role::user_role and p.account_status='approved'
+   where p.role=p_role::user_role
  ) x;
  return out;
 end; $$;
