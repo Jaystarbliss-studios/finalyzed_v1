@@ -6,13 +6,14 @@ import {supabase} from '../lib/supabase';
 import ProjectChat from '../components/ProjectChat';
 
 type Project={id:string;student_id:string;writer_id:string|null;editor_id:string|null;specification_id:string;title:string;plan:string;status:string;price_ngn:number;revision_limit:number;revisions_used:number;deadline_at:string|null;created_at:string;};
+type Specification=Record<string,any>;
 type FileRow={id:string;drive_url:string;file_type:string;version:number;is_customer_visible:boolean;created_at:string};
 type QA={id:string;decision:string;feedback:string|null;created_at:string;decided_at:string|null};
 type Revision={id:string;status:string;request_text:string;points_cost:number;created_at:string};
 
 export default function ProjectWorkspace(){
  const {id}=useParams(); const {user,userData}=useAuth(); const navigate=useNavigate();
- const [project,setProject]=useState<Project|null>(null),[file,setFile]=useState<FileRow|null>(null),[qa,setQa]=useState<QA|null>(null),[revision,setRevision]=useState<Revision|null>(null);
+ const [project,setProject]=useState<Project|null>(null),[specification,setSpecification]=useState<Specification|null>(null),[file,setFile]=useState<FileRow|null>(null),[qa,setQa]=useState<QA|null>(null),[revision,setRevision]=useState<Revision|null>(null);
  const [loading,setLoading]=useState(true),[driveLink,setDriveLink]=useState(''),[qaFeedback,setQaFeedback]=useState(''),[revisionNotes,setRevisionNotes]=useState(''),[disputeReason,setDisputeReason]=useState(''),[rating,setRating]=useState(5),[reviewText,setReviewText]=useState('');
  const [busy,setBusy]=useState(false),[chat,setChat]=useState(false),[error,setError]=useState(''),[reviewed,setReviewed]=useState(false);
 
@@ -20,6 +21,7 @@ export default function ProjectWorkspace(){
   if(!id)return; setLoading(true);
   try{
    const {data:p,error:pe}=await supabase.from('projects').select('*').eq('id',id).maybeSingle(); if(pe)throw pe; if(!p)throw new Error('Project not found.'); setProject(p);
+   const {data:sp}=await supabase.from('project_specifications').select('*').eq('id',p.specification_id).maybeSingle(); setSpecification(sp||null);
    const {data:files}=await supabase.from('project_files').select('*').eq('project_id',id).order('version',{ascending:false}).order('created_at',{ascending:false}).limit(10); setFile(((files||[]).find((f:any)=>f.is_customer_visible)||(files||[])[0])||null);
    const {data:q}=await supabase.from('qa_reviews').select('*').eq('project_id',id).order('created_at',{ascending:false}).limit(1).maybeSingle(); setQa(q||null);
    const {data:r}=await supabase.from('project_revisions').select('*').eq('project_id',id).order('created_at',{ascending:false}).limit(1).maybeSingle(); setRevision(r||null);
@@ -47,7 +49,7 @@ export default function ProjectWorkspace(){
   <button onClick={()=>navigate(-1)} className='flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6'><ArrowLeft className='w-4 h-4'/>Back</button>
   {error&&<div className='mb-5 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500'>{error}</div>}
   <header className='mb-7 border-b border-border pb-6 flex flex-col md:flex-row md:justify-between gap-4'><div><span className='mono-label text-primary'>PROJECT WORKSPACE</span><h1 className='text-2xl md:text-3xl font-bold mt-2'>{project.title}</h1><p className='text-sm text-muted-foreground mt-2'>#{project.id.slice(0,8)} · {project.plan} plan</p></div><span className='text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-bold uppercase'>{project.status.replace(/_/g,' ')}</span></header>
-  <div className='grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8'><main className='xl:col-span-2 space-y-6'>
+  <div className='bento-card p-6 mb-6'><div className='flex items-center justify-between gap-3'><div><h2 className='font-bold text-lg'>Project specification & plan</h2><p className='text-xs text-muted-foreground mt-1'>The exact specification submitted for this commission.</p></div><span className='text-xs font-bold uppercase text-primary'>{project.plan} · ₦{Number(project.price_ngn).toLocaleString('en-NG')}</span></div><div className='grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-5'>{Object.entries(specification||{}).filter(([k,v])=>v!==null&&v!==undefined&&v!==''&&!['id','student_id','created_at','updated_at'].includes(k)).slice(0,24).map(([k,v])=><div key={k} className='rounded-xl border border-border p-3'><div className='text-[10px] uppercase tracking-wider font-bold text-muted-foreground'>{k.replace(/_/g,' ')}</div><div className='text-sm font-medium mt-1 break-words'>{typeof v==='object'?JSON.stringify(v):String(v)}</div></div>)}</div></div><div className='grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8'><main className='xl:col-span-2 space-y-6'>
    {isWriter&&project.status==='assigned'&&<ActionCard title='Accept Project' text='Accept this paid assignment to begin the delivery window.' button='Accept Project' onClick={()=>call('writer_accept_project',{p_project_id:id!})}/>}
    {pendingRevision&&<ActionCard title='Revision Request' text={revision?.request_text||'The student has requested a revision.'} button='Accept Revision' onClick={acceptRevision}/>} 
    {isWriter&&['in_progress','revision_in_progress','editor_correction_required'].includes(project.status)&&<div className='bento-card p-6 md:p-8'><h2 className='text-xl font-bold flex items-center gap-2 mb-2'><Upload className='w-5 h-5 text-primary'/>Submit Work for QA</h2><p className='text-sm text-muted-foreground mb-5'>Submit the Google Drive link when the PDF/DOCX is ready for Finalyzed Editor review.</p><input value={driveLink} onChange={e=>setDriveLink(e.target.value)} placeholder='https://drive.google.com/…' className='form-input mb-3'/><button disabled={busy||!driveLink.trim()} onClick={submit} className='btn-primary w-full py-3 disabled:opacity-50'><Send className='w-4 h-4 inline mr-2'/>{busy?'Submitting…':'Submit to Editor QA'}</button></div>}
