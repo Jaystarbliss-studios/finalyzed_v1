@@ -100,7 +100,7 @@ export default function Marketplace() {
                   <Metric icon={<Clock className="w-3.5 h-3.5" />} value={specialist.averageDeliveryDays ? `${specialist.averageDeliveryDays}d` : '—'} label="avg delivery" />
                 </div>
 
-                <Link to={`/specialist/${specialist.id}`} className="btn-secondary w-full py-2 flex items-center justify-center gap-1 text-xs mt-6 group-hover:border-primary group-hover:text-primary transition-colors">View Profile <ArrowRight className="w-4 h-4" /></Link>
+                <Link to={`/specialists/${specialist.id}`} className="btn-secondary w-full py-2 flex items-center justify-center gap-1 text-xs mt-6 group-hover:border-primary group-hover:text-primary transition-colors">View Profile <ArrowRight className="w-4 h-4" /></Link>
               </motion.article>
             );
           })}
