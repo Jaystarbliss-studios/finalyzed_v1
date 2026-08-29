@@ -1,167 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Building2, CheckCircle, AlertCircle, GraduationCap, ShieldCheck, SlidersHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import React,{useEffect,useMemo,useState} from 'react';
+import {Search,Building2,CheckCircle,AlertCircle,GraduationCap,ShieldCheck,Eye,ArrowRight,Feather,X} from 'lucide-react';
+import {Link} from 'react-router-dom';
+import {supabase} from '../lib/supabase';
+import {useAuth} from '../contexts/AuthContext';
 
-export default function KnowledgeBase() {
-  const { user, userData } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [institutions, setInstitutions] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [templateInstitution, setTemplateInstitution] = useState('');
-  const [templateName, setTemplateName] = useState('');
-  const [templateDefaults, setTemplateDefaults] = useState('{}');
-  const [templateMsg, setTemplateMsg] = useState('');
+export default function KnowledgeBase(){
+ const {userData}=useAuth();
+ const [search,setSearch]=useState('');
+ const [institutions,setInstitutions]=useState<any[]>([]);
+ const [templates,setTemplates]=useState<any[]>([]);
+ const [loading,setLoading]=useState(true);
+ const [selected,setSelected]=useState<any|null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [{ data: insts }, { data: guides }, { data: tpls }] = await Promise.all([
-        supabase.from('institutions').select('*').order('name', { ascending: true }),
-        supabase.from('institution_guidelines').select('*').order('observed_at', { ascending: false }),
-        supabase.from('institution_templates').select('*').order('created_at', { ascending: false }),
-      ]);
-      if (cancelled) return;
-      const rows = (insts || []).map((i: any) => ({
-        ...i,
-        guidelines: (guides || []).filter((g: any) => g.institution_id === i.id),
-      }));
-      setInstitutions(rows);
-      setTemplates(tpls || []);
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, []);
+ useEffect(()=>{let live=true;(async()=>{const [{data:i},{data:g},{data:t}]=await Promise.all([supabase.from('institutions').select('*').order('name'),supabase.from('institution_guidelines').select('*').order('observed_at',{ascending:false}),supabase.from('institution_templates').select('id,name,description,institution_id,specification_schema,specification_defaults,verified,usage_count,is_student_derived,created_at').order('created_at',{ascending:false})]);if(!live)return;setInstitutions((i||[]).map((x:any)=>({...x,guidelines:(g||[]).filter((y:any)=>y.institution_id===x.id)})));setTemplates(t||[]);setLoading(false)})();return()=>{live=false}},[]);
 
-  const filteredInstitutions = institutions.filter((inst) =>
-    (inst.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (inst.guidelines || []).some((g: any) =>
-      (g.requirement || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (g.category || '').toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+ const filteredTemplates=useMemo(()=>templates.filter(t=>{const inst=institutions.find(i=>i.id===t.institution_id);const q=search.toLowerCase();return !q||String(t.name||'').toLowerCase().includes(q)||String(t.description||'').toLowerCase().includes(q)||String(inst?.name||'').toLowerCase().includes(q)}),[templates,institutions,search]);
+ const filteredInstitutions=useMemo(()=>institutions.filter(i=>{const q=search.toLowerCase();return !q||String(i.name||'').toLowerCase().includes(q)}),[institutions,search]);
 
-  const createTemplate = async () => {
-    try {
-      const parsed = JSON.parse(templateDefaults);
-      if (!templateInstitution || !templateName.trim()) throw new Error('Select an institution and name the template.');
-      const { error } = await supabase.from('institution_templates').insert({
-        institution_id: templateInstitution,
-        name: templateName.trim(),
-        specification_defaults: parsed,
-        verified: true,
-      });
-      if (error) throw error;
-      setTemplateMsg('Template created.');
-      setTemplateName('');
-      setTemplateDefaults('{}');
-      const { data } = await supabase.from('institution_templates').select('*').order('created_at', { ascending: false });
-      setTemplates(data || []);
-    } catch (e) {
-      setTemplateMsg(e instanceof Error ? e.message : 'Invalid template JSON.');
-    }
-  };
+ return <div className="w-full max-w-7xl mx-auto px-4 py-6 md:py-10 space-y-8">
+  <header className="text-center"><span className="mono-label text-primary">Finalyzed Knowledge Base</span><h1 className="text-3xl md:text-5xl font-light tracking-tight mt-3">Institutional <b>Knowledge</b></h1><p className="text-muted-foreground max-w-2xl mx-auto mt-3">Reusable project templates and verified institutional requirements, kept separate from each student's private project specification.</p></header>
+  <div className="max-w-2xl mx-auto relative"><Search className="absolute left-4 top-4 w-5 h-5 text-muted-foreground"/><input value={search} onChange={e=>setSearch(e.target.value)} className="form-input pl-12 py-4" placeholder="Search templates or institutions…"/></div>
 
-  return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-8 md:py-12">
-      <div className="text-center mb-12">
-        <span className="mono-label">Institutional Requirements</span>
-        <h1 className="text-3xl md:text-5xl font-light tracking-tight mt-4 mb-6">
-          THE <span className="font-bold">KNOWLEDGE BASE</span>
-        </h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          A searchable legacy of institutional formatting, chapter structures and citation requirements.
-        </p>
-      </div>
+  <section className="space-y-4">
+   <div className="flex items-end justify-between gap-3"><div><span className="mono-label text-primary flex items-center gap-2"><Feather className="w-4 h-4"/>Reusable templates</span><h2 className="text-2xl font-bold mt-1">Project Specification Templates</h2></div><span className="text-xs text-muted-foreground">{filteredTemplates.length} available</span></div>
+   {loading?<div className="bento-card p-10 text-center text-muted-foreground">Loading knowledge base…</div>:filteredTemplates.length===0?<div className="bento-card p-10 text-center"><GraduationCap className="w-10 h-10 mx-auto opacity-30 mb-3"/><p className="font-semibold">No templates match this search.</p></div>:
+   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{filteredTemplates.map(t=>{const inst=institutions.find(i=>i.id===t.institution_id);return <article key={t.id} className="bento-card p-5 hover:border-primary/30 transition-colors"><div className="flex items-start justify-between gap-3"><div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Feather className="w-5 h-5"/></div>{t.verified?<span className="badge-verified text-[10px]">Verified</span>:<span className="text-[10px] px-2 py-1 rounded-full border border-border text-muted-foreground">Community</span>}</div><h3 className="font-bold mt-4">{t.name||'Template'}</h3><p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description||'Reusable 13-stage Finalyzed project specification template.'}</p><p className="text-xs text-primary mt-3 flex items-center gap-1"><Building2 className="w-3 h-3"/>{inst?.name||'Institution not specified'}</p><div className="flex gap-2 mt-4"><button onClick={()=>setSelected(t)} className="btn-secondary flex-1 py-2 text-xs flex items-center justify-center gap-1"><Eye className="w-3.5 h-3.5"/>View template</button><Link to={'/start-project?template='+t.id+'&tweak=1'} className="btn-primary flex-1 py-2 text-xs flex items-center justify-center gap-1">Use <ArrowRight className="w-3.5 h-3.5"/></Link></div></article>})}</div>}
+  </section>
 
-      {userData?.role === 'admin' && (
-        <div className="max-w-4xl mx-auto mb-12 bento-card p-6">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div><h2 className="font-bold text-lg">Knowledge template manager</h2><p className="text-sm text-muted-foreground">Create reusable specification defaults for approved institutional patterns.</p></div>
-            <ShieldCheck className="w-5 h-5 text-primary" />
-          </div>
-          {templateMsg && <p className="text-sm text-primary mb-3">{templateMsg}</p>}
-          <div className="grid md:grid-cols-2 gap-3">
-            <select value={templateInstitution} onChange={e => setTemplateInstitution(e.target.value)} className="form-input">
-              <option value="">Select institution</option>
-              {institutions.map((i: any) => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
-            <input value={templateName} onChange={e => setTemplateName(e.target.value)} className="form-input" placeholder="Template name" />
-          </div>
-          <textarea value={templateDefaults} onChange={e => setTemplateDefaults(e.target.value)} className="form-input mt-3 min-h-[100px] font-mono text-xs" placeholder='{"fontFamily":"Times New Roman","lineSpacing":"2.0"}' />
-          <button onClick={() => void createTemplate()} className="btn-primary mt-3 px-5 py-3">Create template</button>
-        </div>
-      )}
+  <section className="space-y-4"><div><span className="mono-label">Institutional requirements</span><h2 className="text-2xl font-bold mt-1">Institutions</h2></div>{loading?<div className="text-center py-8 text-muted-foreground">Loading…</div>:<div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{filteredInstitutions.slice(0,60).map(inst=><div key={inst.id} className="bento-card p-5"><div className="flex items-start gap-3"><Building2 className="w-5 h-5 text-primary mt-0.5"/><div className="min-w-0"><h3 className="font-semibold truncate">{inst.name}</h3><p className="text-xs text-muted-foreground mt-1 capitalize">{inst.institution_type||'university'}{inst.ownership&&inst.ownership!=='other'?' · '+inst.ownership:''}</p></div></div><div className="flex items-center gap-2 mt-4 text-xs">{(inst.guidelines||[]).some((g:any)=>g.verified)?<span className="text-emerald-600 flex items-center gap-1"><CheckCircle className="w-3 h-3"/>Verified requirements</span>:<span className="text-amber-600 flex items-center gap-1"><AlertCircle className="w-3 h-3"/>Community observed</span>}</div></div>)}</div>}</section>
 
-      <div className="max-w-2xl mx-auto relative mb-16">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search className="h-5 w-5 text-muted-foreground" /></div>
-        <input type="text" className="form-input pl-12 pr-4 py-4" placeholder="Search for your university or department..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-      </div>
+  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 flex gap-3"><ShieldCheck className="w-6 h-6 text-primary shrink-0"/><p className="text-sm text-muted-foreground">Student-specific specifications never replace the source template. When a student tweaks a template, their completed specification is stored separately and can later become a new institutional template without changing the original.</p></div>
 
-      <div className="space-y-6">
-        {loading ? <div className="text-center py-12 text-muted-foreground">Loading knowledge base...</div> : filteredInstitutions.map((inst, idx) => (
-          <div key={inst.id} className="bento-card p-6 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2"><Building2 className="w-6 h-6 text-primary" />{inst.name}</h2>
-                <div className="flex items-center gap-2 mt-2">
-                  {(inst.guidelines || []).some((g: any) => g.verified)
-                    ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500 border border-green-500/20"><CheckCircle className="w-3 h-3" />Verified Guidelines</span>
-                    : <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"><AlertCircle className="w-3 h-3" />Community Observed</span>}
-                </div>
-              </div>
-              {userData?.role === 'student' && (
-                <Link to="/start-project" className="btn-secondary whitespace-nowrap text-sm px-4 py-2">Start Project Here</Link>
-              )}
-            </div>
-
-            {userData?.role === 'student' && templates.some((t: any) => t.institution_id === inst.id) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                {templates.filter((t: any) => t.institution_id === inst.id).map((t: any) => (
-                  <div key={t.id} className="p-4 bg-primary/5 rounded-xl border border-primary/15">
-                    <span className="text-xs uppercase tracking-wider font-bold text-primary">Prepaid template</span>
-                    <p className="font-semibold mt-1">{t.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Used {t.usage_count || 0} times</p>
-                    <div className="flex gap-2 mt-3"><Link to={'/start-project?template=' + t.id} className="btn-primary inline-flex text-xs px-3 py-2">Use template</Link><Link to={'/start-project?template=' + t.id + '&tweak=1'} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-muted"><SlidersHorizontal className="w-3 h-3"/>Tweak template</Link></div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(inst.guidelines || []).map((guide: any) => (
-                <div key={guide.id} className="p-4 bg-muted/50 rounded-lg border border-border">
-                  <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block mb-2">{guide.type || guide.category || 'Requirement'}</span>
-                  <p className="text-sm">{guide.requirement}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {!loading && filteredInstitutions.length === 0 && (
-          <div className="text-center py-12 bento-card p-8">
-            <GraduationCap className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-bold mb-2">Institution Not Found</h3>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              We haven't indexed specific requirements for this search yet. Students can continue through the normal specification workflow, where requirements are confirmed before commissioning.
-            </p>
-            {userData?.role === 'student' && (
-              <Link to="/start-project" className="btn-primary inline-flex mt-6 px-5 py-3">Continue to Project Specification</Link>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-16 bg-primary/5 border border-primary/20 rounded-2xl p-8 text-center max-w-3xl mx-auto">
-        <ShieldCheck className="w-12 h-12 text-primary mx-auto mb-4" />
-        <h3 className="text-xl font-bold mb-2">Privacy & Academic Integrity</h3>
-        <p className="text-muted-foreground text-sm">
-          Finalyzed keeps student-specific information out of the public knowledge base. Only reusable, non-sensitive institutional and departmental requirements belong here.
-        </p>
-      </div>
-    </div>
-  );
+  {selected&&<TemplatePreview template={selected} institution={institutions.find(i=>i.id===selected.institution_id)} onClose={()=>setSelected(null)}/>}
+ </div>;
 }
+
+function TemplatePreview({template,institution,onClose}:{template:any;institution:any;onClose:()=>void}){
+ const schema=Array.isArray(template.specification_schema)?template.specification_schema:[];const answers=template.specification_defaults||{};
+ return <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm p-3 md:p-6 flex items-center justify-center"><div className="w-full max-w-4xl max-h-[92dvh] overflow-hidden rounded-3xl bg-background border border-border shadow-2xl flex flex-col"><header className="p-5 md:p-6 border-b border-border flex items-start justify-between gap-4"><div><span className="mono-label text-primary">Template preview</span><h2 className="text-xl md:text-2xl font-bold mt-1">{template.name}</h2><p className="text-sm text-muted-foreground mt-1">{institution?.name||'Institution'} · {template.description||'13-stage project specification'}</p></div><button onClick={onClose} className="p-2 rounded-xl hover:bg-muted"><X className="w-5 h-5"/></button></header><div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-5">{schema.map((s:any,i:number)=><section key={s.title} className="rounded-2xl border border-border p-4 md:p-5"><div className="flex gap-3"><span className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">{i+1}</span><div className="min-w-0 flex-1"><h3 className="font-bold">{s.title}</h3><p className="text-xs text-muted-foreground mt-1">{s.description}</p><div className="mt-4 space-y-2">{(s.fields||[]).map((f:any)=><div key={f.key} className="grid grid-cols-1 md:grid-cols-[1fr_1.2fr] gap-1 border-t border-border/60 pt-2 text-sm"><span className="font-medium">{f.label}</span><span className="text-muted-foreground">{formatAnswer(answers[f.key])}</span></div>)}</div></div></div></section>)}</div><footer className="p-4 md:p-5 border-t border-border flex gap-3"><button onClick={onClose} className="btn-secondary flex-1 py-3">Close</button><Link to={'/start-project?template='+template.id+'&tweak=1'} className="btn-primary flex-1 py-3 text-center">Use this template</Link></footer></div></div>
+}
+function formatAnswer(v:any){if(Array.isArray(v))return v.length?v.join(', '):'—';if(typeof v==='boolean')return v?'Yes':'No';return String(v??'—')||'—';}
