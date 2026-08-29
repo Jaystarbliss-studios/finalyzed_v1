@@ -102,3 +102,49 @@ grant execute on function public.finalyzed_admin_analytics() to authenticated;
 drop policy if exists bank_accounts_admin_read on public.bank_accounts;
 create policy bank_accounts_admin_read on public.bank_accounts for select to authenticated
 using ((select auth.uid())=user_id or exists(select 1 from profiles p where p.id=auth.uid() and p.role='admin' and p.account_status='approved'));
+
+create or replace function public.admin_withdrawals()
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare actor public.profiles; out jsonb;
+begin
+ select * into actor from public.profiles where id=auth.uid();
+ if actor.role<>'admin' or actor.account_status<>'approved' then raise exception 'ADMIN_REQUIRED'; end if;
+ select coalesce(jsonb_agg(row_to_json(x) order by x.created_at desc),'[]'::jsonb) into out from (
+   select w.*,p.full_name,p.username,p.role,p.access_state
+   from public.withdrawals w join public.profiles p on p.id=w.user_id
+ ) x;
+ return out;
+end; $$;
+grant execute on function public.admin_withdrawals() to authenticated;
+
+create or replace function public.admin_disputes()
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare actor public.profiles; out jsonb;
+begin
+ select * into actor from public.profiles where id=auth.uid();
+ if actor.role<>'admin' or actor.account_status<>'approved' then raise exception 'ADMIN_REQUIRED'; end if;
+ select coalesce(jsonb_agg(row_to_json(x) order by x.created_at desc),'[]'::jsonb) into out from (
+   select d.*,p.title,p.price_ngn,p.student_id,p.writer_id,p.editor_id,
+     sp.full_name student_name,wp.full_name writer_name,ep.full_name editor_name
+   from public.project_disputes d join public.projects p on p.id=d.project_id
+   left join public.profiles sp on sp.id=p.student_id
+   left join public.profiles wp on wp.id=p.writer_id
+   left join public.profiles ep on ep.id=p.editor_id
+   where d.status='open'
+ ) x;
+ return out;
+end; $$;
+grant execute on function public.admin_disputes() to authenticated;
+
+create or replace function public.update_bank_account(p_id uuid,p_bank_code text,p_bank_name text,p_account_name text,p_account_number text)
+returns public.bank_accounts language plpgsql security definer set search_path=public as $$
+declare r public.bank_accounts;
+begin
+ if auth.uid() is null then raise exception 'UNAUTHENTICATED'; end if;
+ if p_account_number !~ '^[0-9]{10}$' or length(trim(p_bank_name))<2 or length(trim(p_account_name))<2 then raise exception 'INVALID_BANK_ACCOUNT'; end if;
+ update public.bank_accounts set bank_code=trim(p_bank_code),bank_name=trim(p_bank_name),account_name=trim(p_account_name),account_number=trim(p_account_number),paystack_recipient_code=null,verified=false,updated_at=now()
+ where id=p_id and user_id=auth.uid() returning * into r;
+ if r.id is null then raise exception 'BANK_ACCOUNT_NOT_FOUND'; end if;
+ return r;
+end; $$;
+grant execute on function public.update_bank_account(uuid,text,text,text,text) to authenticated;
