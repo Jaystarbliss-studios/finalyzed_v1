@@ -103,7 +103,7 @@ export default function Checkout() {
       );
 
       initializePayment({
-        config: { metadata: { custom_fields: [
+        config: { amount: totalAmount * 100, email: user.email, metadata: { custom_fields: [
           { display_name: 'Project ID', variable_name: 'project_id', value: project.id },
           { display_name: 'Student ID', variable_name: 'student_id', value: user.id },
         ] } },
