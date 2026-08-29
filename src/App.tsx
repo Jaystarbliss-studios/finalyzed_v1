@@ -20,6 +20,7 @@ import QAWorkspace from './pages/QAWorkspace';
 import Checkout from './pages/Checkout';
 import HowItWorks from './pages/HowItWorks';
 import KnowledgeBase from './pages/KnowledgeBase';
+import AdminTemplates from './pages/AdminTemplates';
 import Wallet from './pages/Wallet';
 import Login from './pages/Login';
 import OAuthCallback from './pages/OAuthCallback';
@@ -182,6 +183,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   if (isAdmin) {
     navItems.push(
+      { name: 'Templates', path: '/admin/templates', icon: Feather, isPrimary: false },
       { name: 'Knowledge', path: '/knowledge-base', icon: Compass, isPrimary: false },
       { name: 'Wallet', path: '/wallet', icon: WalletIcon, isPrimary: false }
     );
@@ -369,6 +371,7 @@ export default function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/knowledge-base" element={<KnowledgeBase />} />
+            <Route path="/admin/templates" element={<AdminTemplates />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
