@@ -240,6 +240,8 @@ export default function App() {
           <Route path="/specialist/:id" element={<Layout><SpecialistProfile /></Layout>} />
           <Route path="/start-project" element={<Layout><ProjectWizard /></Layout>} />
           <Route path="/projects/:id" element={<Layout><ProjectWorkspace /></Layout>} />
+          {/* Backwards-compatible route used by the dashboard project cards. */}
+          <Route path="/workspace/:id" element={<Layout><ProjectWorkspace /></Layout>} />
           <Route path="/projects/:id/qa" element={<Layout><QAWorkspace /></Layout>} />
           <Route path="/checkout" element={<Layout><Checkout /></Layout>} />
           <Route path="/how-it-works" element={<Layout><HowItWorks /></Layout>} />
