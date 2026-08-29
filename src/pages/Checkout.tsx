@@ -15,6 +15,7 @@ export default function Checkout() {
   const [selectedPlan, setSelectedPlan] = useState('standard');
   const [processing, setProcessing] = useState(false);
   const [spec, setSpec] = useState<any>(null);
+  const DEMO_MODE = String((import.meta as any).env.VITE_DEMO_MODE ?? 'true').toLowerCase() !== 'false';
   const navigate = useNavigate();
   const { user } = useAuth();
   const specialistId = localStorage.getItem('finalyzed_selected_specialist') || 'unassigned';
@@ -73,6 +74,23 @@ export default function Checkout() {
     }
   };
 
+  const handleDemoPayment = async (projectId: string) => {
+    if (!user) return navigate('/login');
+    setProcessing(true);
+    try {
+      const { data, error } = await supabase.rpc('complete_demo_project_payment', { p_project_id: projectId });
+      if (error) throw error;
+      localStorage.removeItem('finalyzed_project_draft');
+      localStorage.removeItem('finalyzed_project_confirmed');
+      localStorage.removeItem('finalyzed_selected_specialist');
+      navigate('/dashboard', { replace: true, state: { paymentSuccess: true, demoPayment: true, projectId: data?.id } });
+    } catch (error) {
+      console.error('Demo checkout failed:', error);
+      alert(error instanceof Error ? error.message : 'Demo checkout could not be completed.');
+      setProcessing(false);
+    }
+  };
+
   const handlePayment = async () => {
     if (!user) return navigate('/login');
     if (!spec?.projectTitle) return navigate('/start-project');
@@ -101,6 +119,11 @@ export default function Checkout() {
         totalAmount,
         specialistId || undefined,
       );
+
+      if (DEMO_MODE) {
+        await handleDemoPayment(project.id);
+        return;
+      }
 
       initializePayment({
         config: { amount: totalAmount * 100, email: user.email, metadata: { custom_fields: [
@@ -141,8 +164,8 @@ export default function Checkout() {
         <div><div className="bento-card p-6 sticky top-24 bg-background shadow-lg shadow-black/5"><h2 className="text-xl font-bold mb-6">Order Details</h2>
           <div className="space-y-4 mb-6"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Plan</span><span className="font-medium capitalize">{selectedPlan}</span></div><div className="pt-4 border-t border-border flex justify-between"><span className="font-bold">Total</span><span className="font-bold text-xl text-primary">₦{totalAmount.toLocaleString()}</span></div></div>
           <div className="space-y-3 mb-6"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Shield className="w-4 h-4 text-green-500" /> <span>Payment is verified server-side before the project advances.</span></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="w-4 h-4 text-green-500" /> <span>Secure payment processing via Paystack.</span></div></div>
-          <button onClick={handlePayment} disabled={processing} className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50">{processing ? 'Processing…' : <><CreditCard className="w-5 h-5" /> Pay ₦{totalAmount.toLocaleString()}</>}</button>
-          <div className="mt-4 text-center"><span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Secured by Paystack</span></div>
+          <button onClick={handlePayment} disabled={processing} className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50">{processing ? 'Processing…' : <><CreditCard className="w-5 h-5" /> {DEMO_MODE ? `Complete Demo Checkout · ₦${totalAmount.toLocaleString()}` : `Pay ₦${totalAmount.toLocaleString()}`}</>}</button>
+          <div className="mt-4 text-center"><span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">{DEMO_MODE ? 'Finalyzed Demo Payment · Admin wallet' : 'Secured by Paystack'}</span></div>
         </div></div>
       </div>
     </div>
