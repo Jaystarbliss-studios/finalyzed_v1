@@ -75,7 +75,7 @@ with cash as (
 ), withdrawals as (
  select coalesce(sum(amount_ngn),0)::bigint paid from public.withdrawals where status in ('completed','processing')
 ), months as (
- select to_char(date_trunc('month',pay.created_at),'Mon') name, date_trunc('month',created_at) bucket,
+ select to_char(date_trunc('month',pay.created_at),'Mon') name, date_trunc('month',pay.created_at) bucket,
    coalesce(sum(case when pay.status='completed' then pay.amount_ngn else 0 end),0)::bigint revenue,
    count(*)::int transactions
  from public.payments pay group by 1,2 order by 2 desc limit 12
