@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Shield, CreditCard, Lock, Zap, Star, Award } from 'lucide-react';
+import { CheckCircle, Shield, CreditCard, Lock, Zap, Star, Award, UserRound, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, createProjectFromSpecification } from '../lib/supabase';
 import { usePaystackPayment } from 'react-paystack';
@@ -15,12 +15,22 @@ export default function Checkout() {
   const [selectedPlan, setSelectedPlan] = useState('standard');
   const [processing, setProcessing] = useState(false);
   const [spec, setSpec] = useState<any>(null);
+  const [specialists, setSpecialists] = useState<any[]>([]);
+  const [selectedSpecialistId, setSelectedSpecialistId] = useState('');
+  const [specialistsLoading, setSpecialistsLoading] = useState(true);
   const DEMO_MODE = String((import.meta as any).env.VITE_DEMO_MODE ?? 'true').toLowerCase() !== 'false';
   const navigate = useNavigate();
   const { user } = useAuth();
-  const specialistId = localStorage.getItem('finalyzed_selected_specialist') || 'unassigned';
+  const storedSpecialistId = localStorage.getItem('finalyzed_selected_specialist') || '';
 
   useEffect(() => {
+    const stored = localStorage.getItem('finalyzed_selected_specialist') || '';
+    setSelectedSpecialistId(stored);
+    (async () => {
+      const { data } = await supabase.from('public_profiles').select('id,display_name,avatar_url,bio,specialties,rating,review_count,completed_projects,verified').in('role',['writer','editor']).order('rating',{ascending:false}).limit(50);
+      setSpecialists(data || []);
+      setSpecialistsLoading(false);
+    })();
     try {
       const savedSpec = localStorage.getItem('finalyzed_project_confirmed');
       if (savedSpec) setSpec(JSON.parse(savedSpec));
@@ -94,6 +104,10 @@ export default function Checkout() {
   const handlePayment = async () => {
     if (!user) return navigate('/login');
     if (!spec?.projectTitle) return navigate('/start-project');
+    if (!selectedSpecialistId) {
+      alert('Please select a project writer before checkout. You can choose one now or return to the marketplace to view profiles.');
+      return;
+    }
     if (!DEMO_MODE && !config.publicKey) {
       alert('Paystack is not configured yet. Please add VITE_PAYSTACK_PUBLIC_KEY to the environment.');
       return;
@@ -117,7 +131,7 @@ export default function Checkout() {
         specification.id,
         selectedPlan as 'basic' | 'standard' | 'premium',
         totalAmount,
-        specialistId || undefined,
+        selectedSpecialistId,
       );
 
       if (DEMO_MODE) {
@@ -144,7 +158,7 @@ export default function Checkout() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8 md:py-12">
-      <div className="text-center mb-8 md:mb-12"><p className="text-xs uppercase tracking-[0.2em] font-bold text-primary">Secure checkout</p><h1 className="text-2xl md:text-3xl font-bold tracking-tight mt-2">Finalize Your Commission</h1><p className="text-muted-foreground mt-2">Your confirmed project specification is attached to this order.</p></div>
+      <div className="text-center mb-8 md:mb-12"><p className="text-xs uppercase tracking-[0.2em] font-bold text-primary">Secure checkout</p><h1 className="text-2xl md:text-3xl font-bold tracking-tight mt-2">Finalize Your Commission</h1><p className="text-muted-foreground mt-2">Your confirmed project specification is attached to this order. You can choose your specialist here before completing payment.</p></div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="space-y-4"><h2 className="text-xl font-bold flex items-center gap-2"><Zap className="w-5 h-5 text-primary" /> Select Plan</h2>
@@ -157,8 +171,27 @@ export default function Checkout() {
               </button>)}
             </div>
           </div>
+          <div className="bento-card p-6">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div><h2 className="text-xl font-bold">Choose your project writer</h2><p className="text-sm text-muted-foreground mt-1">Your specification is already prepared. Pick the specialist who will receive it after payment.</p></div>
+              <UserRound className="w-5 h-5 text-primary shrink-0" />
+            </div>
+            {specialistsLoading ? <div className="py-8 text-center text-sm text-muted-foreground">Loading verified specialists…</div> :
+            specialists.length === 0 ? <div className="rounded-xl border border-border p-4 text-sm text-muted-foreground">No specialists are currently available. Please return to the marketplace and try again later.</div> :
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto pr-1">
+              {specialists.map(s => <button key={s.id} type="button" onClick={()=>{setSelectedSpecialistId(s.id);localStorage.setItem('finalyzed_selected_specialist',s.id)}} className={`text-left rounded-xl border p-3 transition-all ${selectedSpecialistId===s.id?'border-primary bg-primary/5 ring-1 ring-primary':'border-border hover:border-primary/40'}`}>
+                <div className="flex gap-3">
+                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-primary/10 shrink-0">{s.avatar_url?<img src={s.avatar_url} alt="" className="w-full h-full object-cover"/>:<div className="w-full h-full flex items-center justify-center"><UserRound className="w-5 h-5 text-primary"/></div>}</div>
+                  <div className="min-w-0 flex-1"><div className="font-semibold truncate">{s.display_name||'Finalyzed Specialist'}</div><div className="flex items-center gap-1 text-xs mt-1"><Star className="w-3 h-3 fill-current text-primary"/>{Number(s.rating||0).toFixed(1)} · {s.completed_projects||0} projects</div><p className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.bio||'Verified Finalyzed project specialist.'}</p></div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground mt-1 shrink-0"/>
+                </div>
+              </button>)}
+            </div>}
+            <button type="button" onClick={()=>navigate('/specialists')} className="mt-4 text-sm font-semibold text-primary hover:underline">View full specialist profiles →</button>
+          </div>
+
           <div className="bento-card p-6"><h2 className="text-xl font-bold mb-5">Project Summary</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8 text-sm">
-            <Summary label="Title" value={spec.projectTitle || 'Untitled'} /><Summary label="Type" value={spec.projectType || 'Standard'} /><Summary label="Target pages" value={spec.targetPages || 'Not specified'} /><Summary label="Specialist" value={specialistId === 'unassigned' ? 'Not pre-selected' : 'Selected specialist'} />
+            <Summary label="Title" value={spec.projectTitle || 'Untitled'} /><Summary label="Type" value={spec.projectType || 'Standard'} /><Summary label="Target pages" value={spec.targetPages || 'Not specified'} /><Summary label="Specialist" value={selectedSpecialistId ? (specialists.find(s => s.id === selectedSpecialistId)?.display_name || 'Selected specialist') : 'Choose a project writer'} />
           </div></div>
         </div>
         <div><div className="bento-card p-6 sticky top-24 bg-background shadow-lg shadow-black/5"><h2 className="text-xl font-bold mb-6">Order Details</h2>
