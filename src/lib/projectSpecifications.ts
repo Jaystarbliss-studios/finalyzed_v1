@@ -80,7 +80,7 @@ export async function saveProjectSpecification(ownerId: string, specification: R
     saved = result.data;
   }
 
-  if (saved) {
+  if (saved && status === 'CONFIRMED') {
     const { data: versions, error: versionError } = await supabase
       .from('project_specification_versions')
       .select('version')
