@@ -22,7 +22,7 @@ export default function Onboarding() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [formData, setFormData] = useState({ fullName:'', username:'', phone:'', institution:'', faculty:'', department:'', degree:'', matricNumber:'', graduationYear:'', bio:'', expertise:'', availability:'', portfolio:'' });
+  const [formData, setFormData] = useState({ fullName:'', username:'', phone:'', institution:'', faculty:'', department:'', degree:'', matricNumber:'', graduationYear:'', bio:'', expertise:'', availability:'', availabilityDays:[] as string[], schoolLevels:[] as string[], portfolio:'' });
 
   if (!user) return <Navigate to="/login" replace />;
   if (userData?.role === 'admin') return <Navigate to="/dashboard" replace />;
