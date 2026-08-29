@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Menu, X, Home as HomeIcon, Search, Feather, Compass,
+  Menu, X, Home as HomeIcon, Search, Feather, Compass, UserCheck, ShieldAlert,
   Wallet as WalletIcon, LogOut, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -21,6 +21,8 @@ import Checkout from './pages/Checkout';
 import HowItWorks from './pages/HowItWorks';
 import KnowledgeBase from './pages/KnowledgeBase';
 import AdminTemplates from './pages/AdminTemplates';
+import AdminControlCenter from './pages/AdminControlCenter';
+import BankDetails from './pages/BankDetails';
 import Wallet from './pages/Wallet';
 import Login from './pages/Login';
 import OAuthCallback from './pages/OAuthCallback';
@@ -44,7 +46,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   }
 
   const isAdmin = userData?.role === 'admin';
+  const accessState = String(userData?.access_state || 'active');
   const role = userData?.role;
+  if (user && ['suspended','banned'].includes(accessState)) {
+    return <div className="min-h-[100dvh] bg-background flex items-center justify-center p-5"><div className="max-w-md w-full rounded-2xl border border-border bg-background p-6 text-center shadow-xl"><ShieldAlert className="w-10 h-10 mx-auto text-amber-500"/><h1 className="text-xl font-bold mt-3">Account access {accessState}</h1><p className="text-sm text-muted-foreground mt-2">Your Finalyzed account cannot use platform services right now. Contact Finalyzed support if you believe this was a mistake.</p><button onClick={handleLogout} className="btn-secondary mt-5 px-5 py-2">Log out</button></div></div>;
+  }
 
   const isStrictlyPublic = ['/', '/login', '/how-it-works'].includes(location.pathname);
   const isOnboarding = location.pathname === '/onboarding';
@@ -183,6 +189,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   if (isAdmin) {
     navItems.push(
+      { name: 'Admin Center', path: '/admin/control', icon: UserCheck, isPrimary: false },
       { name: 'Templates', path: '/admin/templates', icon: Feather, isPrimary: false },
       { name: 'Knowledge', path: '/knowledge-base', icon: Compass, isPrimary: false },
       { name: 'Wallet', path: '/wallet', icon: WalletIcon, isPrimary: false }
@@ -199,7 +206,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     navItems.push(
       { name: 'Search', path: '/specialists', icon: Search, isPrimary: false },
       { name: 'Knowledge', path: '/knowledge-base', icon: Compass, isPrimary: false },
-      { name: 'Wallet', path: '/wallet', icon: WalletIcon, isPrimary: false }
+      { name: 'Wallet', path: '/wallet', icon: WalletIcon, isPrimary: false },
+      ...(role==='writer'||role==='editor' ? [{ name: 'Bank', path: '/bank-details', icon: WalletIcon, isPrimary: false }] : [])
     );
   }
 
@@ -372,6 +380,8 @@ export default function App() {
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/knowledge-base" element={<KnowledgeBase />} />
             <Route path="/admin/templates" element={<AdminTemplates />} />
+            <Route path="/admin/control" element={<AdminControlCenter />} />
+            <Route path="/bank-details" element={<BankDetails />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
