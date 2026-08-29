@@ -27,7 +27,7 @@ export default function Checkout() {
     const stored = localStorage.getItem('finalyzed_selected_specialist') || '';
     setSelectedSpecialistId(stored);
     (async () => {
-      const { data } = await supabase.from('public_profiles').select('id,display_name,avatar_url,bio,specialties,rating,review_count,completed_projects,verified').eq('verified',true).order('rating',{ascending:false}).limit(50);
+      const { data, error } = await supabase.from('public_profiles').select('id,display_name,avatar_url,bio,specialties,rating,review_count,completed_projects,verified').eq('verified',true).order('rating',{ascending:false}).limit(50);
       setSpecialists(data || []);
       setSpecialistsLoading(false);
     })();
