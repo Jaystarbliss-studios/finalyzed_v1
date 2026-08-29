@@ -67,7 +67,7 @@ grant execute on function public.admin_applications() to authenticated;
 create or replace function public.finalyzed_admin_analytics()
 returns jsonb language sql security definer set search_path=public as $$
 with cash as (
- select coalesce(sum(amount_ngn),0)::bigint revenue from payments where status='completed'
+ select coalesce(sum(amount_ngn),0)::bigint revenue from public.payments where public.payments.status='completed'
 ), points as (
  select coalesce(sum(amount_ngn),0)::bigint revenue from wallet_transactions where transaction_type='points_purchase'
 ), fees as (
@@ -75,10 +75,10 @@ with cash as (
 ), withdrawals as (
  select coalesce(sum(amount_ngn),0)::bigint paid from public.withdrawals where status in ('completed','processing')
 ), months as (
- select to_char(date_trunc('month',created_at),'Mon') name, date_trunc('month',created_at) bucket,
-   coalesce(sum(case when status='completed' then amount_ngn else 0 end),0)::bigint revenue,
+ select to_char(date_trunc('month',pay.created_at),'Mon') name, date_trunc('month',created_at) bucket,
+   coalesce(sum(case when pay.status='completed' then pay.amount_ngn else 0 end),0)::bigint revenue,
    count(*)::int transactions
- from payments group by 1,2 order by 2 desc limit 12
+ from public.payments pay group by 1,2 order by 2 desc limit 12
 )
 select jsonb_build_object(
  'cash_revenue_ngn',(select revenue from cash),
