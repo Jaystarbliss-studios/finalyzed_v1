@@ -33,37 +33,51 @@ export const FINALYZED_DEFAULT_TEMPLATE:TemplateStep[]=[
 ];
 
 export default function ProjectTemplateManager(){
- const [institutions,setInstitutions]=useState<any[]>([]); const [selectedInstitution,setSelectedInstitution]=useState(''); const [name,setName]=useState(''); const [description,setDescription]=useState(''); const [schema,setSchema]=useState<TemplateStep[]>(FINALYZED_DEFAULT_TEMPLATE); const [saving,setSaving]=useState(false); const [syncing,setSyncing]=useState(false); const [message,setMessage]=useState('');
+ const [institutions,setInstitutions]=useState<any[]>([]);
+ const [selectedInstitution,setSelectedInstitution]=useState('');
+ const [name,setName]=useState('');
+ const [description,setDescription]=useState('');
+ const [answers,setAnswers]=useState<Record<string,any>>({});
+ const [step,setStep]=useState(0);
+ const [saving,setSaving]=useState(false);
+ const [syncing,setSyncing]=useState(false);
+ const [message,setMessage]=useState('');
+ const [errors,setErrors]=useState<string[]>([]);
+
  useEffect(()=>{void loadInstitutions()},[]);
- const loadInstitutions=async()=>{const {data}=await supabase.from('institutions').select('id,name,ownership,state,verified').order('name');setInstitutions(data||[])};
- const updateField=(si:number,fi:number,patch:Partial<TemplateField>)=>setSchema(s=>s.map((st,i)=>i===si?{...st,fields:st.fields.map((f,j)=>j===fi?{...f,...patch}:f)}:st));
- const addField=(si:number)=>setSchema(s=>s.map((st,i)=>i===si?{...st,fields:[...st.fields,{key:'custom_'+Date.now(),label:'New question',type:'text'}]}:st));
- const removeField=(si:number,fi:number)=>setSchema(s=>s.map((st,i)=>i===si?{...st,fields:st.fields.filter((_,j)=>j!==fi)}:st));
- const syncNUC=async()=>{setSyncing(true);setMessage('Scanning the current NUC federal, state and private university lists…');try{const r=await fetch('/.netlify/functions/nuc-universities');const payload=await r.json();if(!r.ok)throw new Error(payload.error||'NUC sync failed.');const result=await supabase.rpc('admin_import_institutions',{p_institutions:payload.institutions});if(result.error)throw result.error;await loadInstitutions();setMessage('NUC sync complete: '+String(result.data?.inserted||0)+' added, '+String(result.data?.updated||0)+' refreshed.');}catch(e){setMessage(e instanceof Error?e.message:'NUC sync failed.')}finally{setSyncing(false)}};
- const save=async()=>{if(!selectedInstitution||!name.trim()){setMessage('Choose an institution and name the template.');return}setSaving(true);setMessage('');
- const {error}=await supabase.from('institution_templates').insert({institution_id:selectedInstitution,name:name.trim(),description:description.trim(),specification_schema:schema,specification_defaults:{},verified:true});
- setSaving(false);setMessage(error?error.message:'Template published successfully.');};
- return <section className="bento-card p-6 space-y-6">
-  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4"><div><div className="mono-label text-primary flex items-center gap-2"><Building2 className="w-4 h-4"/>Project Template Studio</div><h2 className="text-2xl font-bold mt-2">Build the student specification form</h2><p className="text-sm text-muted-foreground mt-2 max-w-3xl">Every question configured here becomes part of the student's project specification. Use structured controls instead of forcing students to type everything manually.</p></div><div className="flex gap-2"><button onClick={()=>void syncNUC()} disabled={syncing} className="btn-secondary px-4 py-2 text-sm">{syncing?'Syncing NUC…':'Sync NUC universities'}</button><button onClick={()=>setSchema(FINALYZED_DEFAULT_TEMPLATE)} className="btn-secondary px-4 py-2 text-sm">Reset to Finalyzed baseline</button></div></div>
-  <div className="grid md:grid-cols-3 gap-4"><label className="block space-y-2"><span className="text-sm font-semibold">Institution</span><select value={selectedInstitution} onChange={e=>setSelectedInstitution(e.target.value)} className="form-input"><option value="">Select institution</option>{institutions.map(i=><option key={i.id} value={i.id}>{i.name}{i.ownership&&i.ownership!=='other'?' · '+i.ownership:''}</option>)}</select></label><label className="block space-y-2"><span className="text-sm font-semibold">Template name</span><input value={name} onChange={e=>setName(e.target.value)} className="form-input" placeholder="e.g. BSc Computer Science — Project Template"/></label><label className="block space-y-2"><span className="text-sm font-semibold">Description</span><input value={description} onChange={e=>setDescription(e.target.value)} className="form-input" placeholder="Rules this template captures"/></label></div>
-  <div className="space-y-4">{schema.map((step,si)=><div key={step.title} className="rounded-2xl border border-border p-4"><div className="flex items-center justify-between gap-3 mb-4"><div><h3 className="font-bold">{si+1}. {step.title}</h3><p className="text-xs text-muted-foreground">{step.description}</p></div><button onClick={()=>addField(si)} className="btn-secondary px-3 py-2 text-xs flex items-center gap-1"><Plus className="w-3 h-3"/>Question</button></div><div className="space-y-2">{step.fields.map((field,fi)=><div key={field.key} className="grid grid-cols-1 lg:grid-cols-[1fr_150px_1fr_auto] gap-2 items-center rounded-xl bg-muted/30 p-3"><input value={field.label} onChange={e=>updateField(si,fi,{label:e.target.value})} className="form-input text-sm" placeholder="Question label"/><select value={field.type} onChange={e=>updateField(si,fi,{type:e.target.value as TemplateField['type']})} className="form-input text-sm"><option value="text">Short text</option><option value="textarea">Long text</option><option value="select">Dropdown</option><option value="number">Number</option><option value="checkbox">Checkbox</option><option value="multiselect">Multi-select</option></select><input value={(field.options||[]).join(' | ')} onChange={e=>updateField(si,fi,{options:e.target.value.split('|').map(x=>x.trim()).filter(Boolean)})} disabled={!['select','multiselect'].includes(field.type)} className="form-input text-sm disabled:opacity-30" placeholder="Options: Option A | Option B"/><div className="flex items-center gap-2"><label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={Boolean(field.required)} onChange={e=>updateField(si,fi,{required:e.target.checked})}/>Required</label><button onClick={()=>removeField(si,fi)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg" aria-label="Remove question"><Trash2 className="w-4 h-4"/></button></div></div>)}</div></div>)}</div>
-  {message&&<div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary"/>{message}</div>}
-  <button onClick={()=>void save()} disabled={saving||!selectedInstitution||!name.trim()} className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50"><Save className="w-4 h-4"/>{saving?'Publishing…':'Publish Project Template'}</button>
+ const loadInstitutions=async()=>{const {data}=await supabase.from('institutions').select('id,name,ownership,state,institution_type,verified').order('name');setInstitutions(data||[])};
+ const update=(key:string,value:any)=>{setAnswers(v=>({...v,[key]:value}));setErrors([])};
+ const current=FINALYZED_DEFAULT_TEMPLATE[step];
+ const validate=()=>{const missing=current.fields.filter(f=>{const v=answers[f.key];if(f.type==='checkbox')return typeof v!=='boolean';if(f.type==='multiselect')return !Array.isArray(v)||v.length===0;return String(v??'').trim()===''}).map(f=>f.label);setErrors(missing);return missing.length===0};
+ const save=async()=>{if(!selectedInstitution||!name.trim()){setMessage('Choose an institution and name the template.');return}for(let i=0;i<FINALYZED_DEFAULT_TEMPLATE.length;i++){const fields=FINALYZED_DEFAULT_TEMPLATE[i].fields;const missing=fields.filter(f=>{const v=answers[f.key];if(f.type==='checkbox')return typeof v!=='boolean';if(f.type==='multiselect')return !Array.isArray(v)||v.length===0;return String(v??'').trim()===''});if(missing.length){setStep(i);setErrors(missing.map(f=>f.label));setMessage('Complete every question before publishing this template.');return}}setSaving(true);setMessage('');try{const {error}=await supabase.from('institution_templates').insert({institution_id:selectedInstitution,name:name.trim(),description:description.trim(),specification_schema:FINALYZED_DEFAULT_TEMPLATE,specification_defaults:answers,verified:true,is_student_derived:false});if(error)throw error;setMessage('Template published to the Finalyzed Knowledge Base.');setAnswers({});setStep(0);setName('');setDescription('');}catch(e){setMessage(e instanceof Error?e.message:'Unable to publish template.')}finally{setSaving(false)}};
+ return <section className="space-y-6">
+  <div className="bento-card p-6 md:p-8">
+   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+    <div><div className="mono-label text-primary flex items-center gap-2"><Building2 className="w-4 h-4"/>Knowledge Base · Template Studio</div><h1 className="text-2xl md:text-3xl font-bold mt-2">Create an institutional project template</h1><p className="text-sm text-muted-foreground mt-2 max-w-3xl">Fill the same 13-stage project specification students use. Your completed answers become the reusable template students can preview and use.</p></div>
+    <button onClick={async()=>{setSyncing(true);setMessage('Refreshing universities and polytechnics from the official registries…');try{const r=await fetch('/.netlify/functions/national-institutions');const p=await r.json();if(!r.ok)throw new Error(p.error||'Institution sync failed.');const x=await supabase.rpc('admin_import_institutions',{p_institutions:p.institutions});if(x.error)throw x.error;await loadInstitutions();setMessage('Institution catalogue refreshed.')}catch(e){setMessage(e instanceof Error?e.message:'Institution sync failed.')}finally{setSyncing(false)}}} disabled={syncing} className="btn-secondary px-4 py-2 text-sm shrink-0">{syncing?'Refreshing…':'Refresh institution catalogue'}</button>
+   </div>
+   <div className="grid md:grid-cols-3 gap-4 mt-6">
+    <label className="space-y-2"><span className="text-sm font-semibold">Institution *</span><select value={selectedInstitution} onChange={e=>setSelectedInstitution(e.target.value)} className="form-input"><option value="">Select institution</option>{['university','polytechnic'].map(type=><optgroup key={type} label={type==='university'?'Universities':'Polytechnics'}>{institutions.filter(i=>(i.institution_type||'university')===type).map(i=><option key={i.id} value={i.id}>{i.name}{i.ownership&&i.ownership!=='other'?' · '+i.ownership:''}</option>)}</optgroup>)}</select></label>
+    <label className="space-y-2"><span className="text-sm font-semibold">Template name *</span><input value={name} onChange={e=>setName(e.target.value)} className="form-input" placeholder="Template or Template for this institution"/></label>
+    <label className="space-y-2"><span className="text-sm font-semibold">Short description</span><input value={description} onChange={e=>setDescription(e.target.value)} className="form-input" placeholder="What this template is for"/></label>
+   </div>
+  </div>
+  <div className="bento-card p-4 md:p-6">
+   <div className="flex gap-2 overflow-x-auto pb-2 mb-6">{FINALYZED_DEFAULT_TEMPLATE.map((s,i)=><button key={s.title} onClick={()=>setStep(i)} className={'shrink-0 rounded-xl px-3 py-2 text-xs font-bold border '+(step===i?'bg-primary text-primary-foreground border-primary':'border-border text-muted-foreground')}>{i+1}. {s.title}</button>)}</div>
+   <div className="flex items-start justify-between gap-4 mb-6"><div><span className="mono-label text-primary">Stage {step+1} of 13</span><h2 className="text-xl md:text-2xl font-bold mt-1">{current.title}</h2><p className="text-sm text-muted-foreground mt-2">{current.description}</p></div><div className="text-xs text-muted-foreground">{Object.values(answers).filter(v=>typeof v==='boolean'?true:Array.isArray(v)?v.length>0:String(v??'').trim()).length} answers</div></div>
+   {errors.length>0&&<div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500">Please complete: {errors.join(', ')}</div>}
+   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{current.fields.map(field=><TemplateAnswerField key={field.key} field={field} value={answers[field.key]} update={update}/>)}</div>
+   <div className="flex items-center justify-between gap-3 mt-8 pt-5 border-t border-border"><button disabled={step===0} onClick={()=>setStep(s=>Math.max(0,s-1))} className="btn-secondary px-4 py-2 disabled:opacity-40">Previous</button>{step<12?<button onClick={()=>{if(validate())setStep(s=>s+1)}} className="btn-primary px-5 py-2">Next stage</button>:<button onClick={()=>void save()} disabled={saving||!selectedInstitution||!name.trim()} className="btn-primary px-5 py-2">{saving?'Publishing…':'Create Template'}</button>}</div>
+  </div>
+  {message&&<div className="bento-card p-4 text-sm border-primary/20 bg-primary/5">{message}</div>}
  </section>;
-}  const syncNUC=async()=>{
-    setSyncing(true);
-    setMessage('Scanning the current NUC federal, state and private university lists…');
-    try {
-      const r=await fetch('/.netlify/functions/nuc-universities');
-      const payload=await r.json();
-      if(!r.ok) throw new Error(payload.error||'NUC sync failed.');
-      const result=await supabase.rpc('admin_import_institutions',{p_institutions:payload.institutions});
-      if(result.error) throw result.error;
-      await loadInstitutions();
-      setMessage('NUC sync complete: '+String(result.data?.inserted||0)+' added, '+String(result.data?.updated||0)+' refreshed.');
-    } catch(e) {
-      setMessage(e instanceof Error?e.message:'NUC sync failed.');
-    } finally {
-      setSyncing(false);
-    }
-  };
+}
+
+function TemplateAnswerField({field,value,update}:{field:TemplateField;value:any;update:(key:string,value:any)=>void}){
+ const requiredMark=<span className="text-primary"> *</span>;
+ if(field.type==='checkbox')return <label className="md:col-span-2 flex items-center gap-3 rounded-xl border border-border p-4 cursor-pointer hover:bg-muted/40"><input type="checkbox" checked={typeof value==='boolean'?value:false} onChange={e=>update(field.key,e.target.checked)} className="w-5 h-5"/><span className="text-sm font-semibold">{field.label}{requiredMark}</span></label>;
+ if(field.type==='textarea')return <label className="md:col-span-2 space-y-2"><span className="text-sm font-semibold">{field.label}{requiredMark}</span><textarea value={value??''} onChange={e=>update(field.key,e.target.value)} placeholder={field.placeholder||''} className="form-input min-h-[120px] resize-y"/></label>;
+ if(field.type==='select')return <label className="space-y-2"><span className="text-sm font-semibold">{field.label}{requiredMark}</span><select value={value??''} onChange={e=>update(field.key,e.target.value)} className="form-input"><option value="">Select {field.label}</option>{(field.options||[]).map(o=><option key={o} value={o}>{o}</option>)}</select></label>;
+ if(field.type==='multiselect')return <fieldset className="md:col-span-2 space-y-2"><legend className="text-sm font-semibold">{field.label}{requiredMark}</legend><div className="grid sm:grid-cols-2 gap-2">{(field.options||[]).map(o=><label key={o} className="flex items-center gap-3 rounded-xl border border-border p-3 cursor-pointer"><input type="checkbox" checked={Array.isArray(value)&&value.includes(o)} onChange={e=>update(field.key,e.target.checked?[...(Array.isArray(value)?value:[]),o]:(Array.isArray(value)?value:[]).filter(x=>x!==o))} className="w-4 h-4"/><span className="text-sm">{o}</span></label>)}</div></fieldset>;
+ return <label className="space-y-2"><span className="text-sm font-semibold">{field.label}{requiredMark}</span><input type={field.type==='number'?'number':'text'} value={value??''} onChange={e=>update(field.key,e.target.value)} placeholder={field.placeholder||''} className="form-input"/></label>;
+}
