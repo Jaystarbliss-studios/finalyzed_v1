@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { supabase, type FinalyzedRole } from '../lib/supabase';
 
 export type AccountStatus = 'NEW' | 'ONBOARDING' | 'ACTIVE' | 'PENDING_REVIEW' | 'VERIFIED' | 'SUSPENDED' | 'REJECTED' | 'DEACTIVATED';
-export interface UserData { id?: string; role?: FinalyzedRole; capabilities?: FinalyzedRole[]; status?: AccountStatus; onboardingComplete?: boolean; name?: string; username?: string; email?: string; photoURL?: string; phone?: string; createdAt?: string; updatedAt?: string; studentProfile?: Record<string, unknown>; specialistProfile?: Record<string, unknown>; editorProfile?: Record<string, unknown>; [key: string]: unknown; }
+export interface UserData { id?: string; role?: FinalyzedRole; capabilities?: FinalyzedRole[]; status?: AccountStatus; access_state?: 'active'|'suspended'|'banned'; onboardingComplete?: boolean; name?: string; username?: string; email?: string; photoURL?: string; phone?: string; createdAt?: string; updatedAt?: string; studentProfile?: Record<string, unknown>; specialistProfile?: Record<string, unknown>; editorProfile?: Record<string, unknown>; [key: string]: unknown; }
 interface AuthContextType { user: User | null; userData: UserData | null; loading: boolean; refreshUserData: () => Promise<void>; }
 const AuthContext = createContext<AuthContextType>({ user: null, userData: null, loading: true, refreshUserData: async () => undefined });
 export const useAuth = () => useContext(AuthContext);
@@ -25,6 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserData(data ? {
       id: data.id,
       role: data.role,
+      access_state: data.access_state || 'active',
       status: data.account_status === 'pending' ? 'PENDING_REVIEW' : data.account_status === 'suspended' ? 'SUSPENDED' : data.account_status === 'rejected' ? 'REJECTED' : (data.onboarding_complete ? 'ACTIVE' : 'NEW'),
       onboardingComplete: Boolean(data.onboarding_complete),
       name: data.full_name,
