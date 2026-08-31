@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { Menu, X, Home as HomeIcon, Search, Feather, Compass, UserCheck, ShieldAlert, Wallet as WalletIcon, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Menu, X, Home as HomeIcon, Search, Feather, Compass, UserCheck, ShieldAlert, Wallet as WalletIcon, LogOut, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
 import NotificationBell from './components/NotificationBell';
@@ -10,6 +10,8 @@ import Onboarding from './pages/Onboarding';
 import ProjectWizard from './pages/ProjectWizard';
 import Marketplace from './pages/Marketplace';
 import SpecialistProfile from './pages/SpecialistProfile';
+import EditorMarketplace from './pages/EditorMarketplace';
+import EditorProfile from './pages/EditorProfile';
 import ProjectWorkspace from './pages/ProjectWorkspace';
 import QAWorkspace from './pages/QAWorkspace';
 import Checkout from './pages/Checkout';
@@ -141,6 +143,9 @@ function Layout({ children }: { children: React.ReactNode }) {
       { name: 'Knowledge', path: '/knowledge-base', icon: Compass, primary: false },
       { name: 'Wallet', path: '/wallet', icon: WalletIcon, primary: false },
     );
+    if (role === 'writer') {
+      navItems.push({ name: 'Editors', path: '/editors', icon: ShieldCheck, primary: false });
+    }
     if (role === 'writer' || role === 'editor') {
       navItems.push({ name: 'Bank', path: '/bank-details', icon: WalletIcon, primary: false });
     }
@@ -238,6 +243,8 @@ export default function App() {
           <Route path="/specialists" element={<Layout><Marketplace /></Layout>} />
           <Route path="/specialists/:id" element={<Layout><SpecialistProfile /></Layout>} />
           <Route path="/specialist/:id" element={<Layout><SpecialistProfile /></Layout>} />
+          <Route path="/editors" element={<Layout><EditorMarketplace /></Layout>} />
+          <Route path="/editors/:id" element={<Layout><EditorProfile /></Layout>} />
           <Route path="/start-project" element={<Layout><ProjectWizard /></Layout>} />
           <Route path="/projects/:id" element={<Layout><ProjectWorkspace /></Layout>} />
           {/* Backwards-compatible route used by the dashboard project cards. */}
