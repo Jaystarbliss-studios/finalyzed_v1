@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function ProjectChat({ projectId, onClose }: { projectId: string, onClose: () => void }) {
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState(''); const [error,setError]=useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,17 +32,15 @@ export default function ProjectChat({ projectId, onClose }: { projectId: string,
     e.preventDefault();
     if (!newMessage.trim() || !user || projectId === 'demo') return;
     
-    try {
-      await supabase.from('project_messages').insert({
+    try { setError('');
+      const {error:e}=await supabase.from('project_messages').insert({
         text: newMessage.trim(),
         sender_id: user.id,
         sender_name: userData?.name || 'User',
         sender_role: userData?.role || 'student',
-        created_at: new Date().toISOString() });
+        created_at: new Date().toISOString() }); if(e) throw e;
       setNewMessage('');
-    } catch (err) {
-      console.error("Error sending message:", err);
-    }
+    } catch (err) { setError(err instanceof Error?err.message:'Unable to send message.'); console.error("Error sending message:", err); }
   };
 
   return (
@@ -77,7 +75,7 @@ export default function ProjectChat({ projectId, onClose }: { projectId: string,
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="p-3 border-t border-border bg-muted/20 flex gap-2 rounded-b-xl">
+      {error&&<div className="px-3 pt-2 text-xs text-red-500">{error}</div>}<form onSubmit={handleSend} className="p-3 border-t border-border bg-muted/20 flex gap-2 rounded-b-xl">
         <input 
           type="text" 
           value={newMessage}
