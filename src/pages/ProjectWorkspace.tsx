@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import {useNavigate,useParams} from 'react-router-dom';
-import {AlertTriangle,ArrowLeft,CheckCircle,Download,FileCheck,FileText,MessageSquare,Send,ShieldCheck,Upload,XCircle,Star} from 'lucide-react';
+import {AlertTriangle,ArrowLeft,CheckCircle,Download,FileCheck,FileText,MessageSquare,Send,ShieldCheck,Upload,XCircle,Star,UserRound} from 'lucide-react';
 import {useAuth} from '../contexts/AuthContext';
 import {supabase} from '../lib/supabase';
 import ProjectChat from '../components/ProjectChat';
@@ -15,13 +15,14 @@ type Revision={id:string;status:string;request_text:string;points_cost:number;cr
 
 export default function ProjectWorkspace(){
  const {id}=useParams(); const {user,userData}=useAuth(); const navigate=useNavigate();
- const [project,setProject]=useState<Project|null>(null),[specification,setSpecification]=useState<Specification|null>(null),[file,setFile]=useState<FileRow|null>(null),[qa,setQa]=useState<QA|null>(null),[revision,setRevision]=useState<Revision|null>(null),[activities,setActivities]=useState<Activity[]>([]);
+ const [project,setProject]=useState<Project|null>(null),[specification,setSpecification]=useState<Specification|null>(null),[file,setFile]=useState<FileRow|null>(null),[qa,setQa]=useState<QA|null>(null),[revision,setRevision]=useState<Revision|null>(null),[activities,setActivities]=useState<Activity[]>([]),[writerName,setWriterName]=useState('');
  const [loading,setLoading]=useState(true),[driveLink,setDriveLink]=useState(''),[qaFeedback,setQaFeedback]=useState(''),[qaSections,setQaSections]=useState(''),[revisionNotes,setRevisionNotes]=useState(''),[disputeReason,setDisputeReason]=useState(''),[rating,setRating]=useState(5),[reviewText,setReviewText]=useState('');
  const [busy,setBusy]=useState(false),[chat,setChat]=useState(false),[error,setError]=useState(''),[reviewed,setReviewed]=useState(false),[queuePosition,setQueuePosition]=useState(''),[estimatedStart,setEstimatedStart]=useState(''),[queueNote,setQueueNote]=useState('');
  const load=async()=>{
   if(!id)return; setLoading(true);
   try{
    const {data:p,error:pe}=await supabase.from('projects').select('*').eq('id',id).maybeSingle(); if(pe)throw pe; if(!p)throw new Error('Project not found.'); setProject(p);
+   if(user?.id===p.student_id&&p.writer_id){const {data:wp}=await supabase.from('public_profiles').select('display_name').eq('id',p.writer_id).maybeSingle();setWriterName(wp?.display_name||'Assigned Project Writer');}else{setWriterName('');}
    const {data:sp}=await supabase.from('project_specifications').select('*').eq('id',p.specification_id).maybeSingle(); setSpecification(sp||null);
    const {data:files}=await supabase.from('project_files').select('*').eq('project_id',id).order('version',{ascending:false}).order('created_at',{ascending:false}).limit(10); setFile((files||[])[0]||null);
    const {data:q}=await supabase.from('qa_reviews').select('*').eq('project_id',id).order('created_at',{ascending:false}).limit(1).maybeSingle(); setQa(q||null);
@@ -49,7 +50,8 @@ export default function ProjectWorkspace(){
   {error&&<div className='mb-5 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500'>{error}</div>}
   <header className='mb-7 border-b border-border pb-6 flex flex-col md:flex-row md:justify-between gap-4'><div><span className='mono-label text-primary'>PROJECT WORKSPACE</span><h1 className='text-2xl md:text-3xl font-bold mt-2'>{project.title}</h1><p className='text-sm text-muted-foreground mt-2'>#{project.id.slice(0,8)} · {project.plan} plan</p></div><span className='text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-bold uppercase'>{project.status.replace(/_/g,' ')}</span></header>
   <ProjectSpecificationSummary project={project} specification={specification}/>
-  <div className='grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8'><main className='xl:col-span-2 space-y-6'>
+  {isStudent&&project.writer_id&&<section className='bento-card p-6 md:p-7 mt-6 border-primary/20'><div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5'><div><span className='mono-label text-primary'>ASSIGNED PROJECT WRITER</span><h2 className='text-xl font-bold mt-2 flex items-center gap-2'><UserRound className='w-5 h-5 text-primary'/>{writerName||'Assigned Project Writer'}</h2><p className='text-sm text-muted-foreground mt-2'>This writer is assigned to your project. Use the button below to communicate directly from this project page.</p></div><button type='button' onClick={()=>setChat(true)} className='btn-primary inline-flex items-center justify-center gap-2 px-5 py-3 shrink-0'><MessageSquare className='w-4 h-4'/>Message Project Writer</button></div>{chat&&<div className='mt-5'><ProjectChat projectId={id!} onClose={()=>setChat(false)}/></div>}</section>}
+  <div className='grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8 mt-6'><main className='xl:col-span-2 space-y-6'>
    {isWriter&&['in_progress','revision_in_progress','editor_correction_required'].includes(project.status)&&<WriterProjectEditor projectId={project.id} projectTitle={project.title}/>} 
    {isWriter&&project.status==='assigned'&&<ActionCard title='Accept Project' text='Accept this paid assignment to begin the delivery window.' button='Accept Project' onClick={()=>call('writer_accept_project',{p_project_id:id!})}/>} 
    {pendingRevision&&<ActionCard title='Revision Request' text={revision?.request_text||'The student has requested a revision.'} button='Accept Revision' onClick={acceptRevision}/>} 
