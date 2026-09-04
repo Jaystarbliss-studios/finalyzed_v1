@@ -6,91 +6,56 @@ import { useAuth } from '../contexts/AuthContext';
 export default function ProjectChat({ projectId, onClose }: { projectId: string, onClose: () => void }) {
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState(''); const [error,setError]=useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!projectId || projectId === 'demo') return;
-    
-    const q = supabase.from('project_messages').select('*').eq('project_id', projectId).order('created_at', { ascending: true });
-    
     let active = true;
     const load = async () => {
-      const { data } = await q;
-      if (active) setMessages(data ?? []);
+      const { data, error: loadError } = await supabase.from('project_messages').select('*').eq('project_id', projectId).order('created_at', { ascending: true });
+      if (!active) return;
+      if (loadError) setError(loadError.message); else setMessages(data ?? []);
     };
     void load();
     const channel = supabase.channel(`project-chat-${projectId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'project_messages', filter: `project_id=eq.${projectId}` }, () => void load()).subscribe();
     return () => { active = false; void supabase.removeChannel(channel); };
   }, [projectId]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || projectId === 'demo') return;
-    
-    try { setError('');
-      const {error:e}=await supabase.from('project_messages').insert({
-        text: newMessage.trim(),
-        sender_id: user.id,
-        sender_name: userData?.name || 'User',
-        sender_role: userData?.role || 'student',
-        created_at: new Date().toISOString() }); if(e) throw e;
+    const text = newMessage.trim();
+    if (!text || !user || !projectId || projectId === 'demo') return;
+    try {
+      setError('');
+      const { error: sendError } = await supabase.from('project_messages').insert({ project_id: projectId, text, sender_id: user.id, sender_name: userData?.name || 'User', sender_role: userData?.role || 'student', created_at: new Date().toISOString() });
+      if (sendError) throw sendError;
       setNewMessage('');
-    } catch (err) { setError(err instanceof Error?err.message:'Unable to send message.'); console.error("Error sending message:", err); }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Unable to send message.'); console.error('Error sending message:', err); }
   };
 
-  return (
-    <div className="flex flex-col h-[500px] bg-background border border-border rounded-xl shadow-2xl relative">
-      <div className="flex justify-between items-center p-4 border-b border-border bg-muted/50 rounded-t-xl">
-        <h3 className="font-bold flex items-center gap-2 text-sm uppercase tracking-wider">Workspace Chat</h3>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-        {messages.length === 0 ? (
-          <div className="text-center text-muted-foreground my-auto text-sm">
-            No messages yet. Start the conversation!
-          </div>
-        ) : (
-          messages.map(msg => {
-            const isMe = msg.sender_id === user?.id;
-            return (
-              <div key={msg.id} className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
-                <span className="text-[10px] text-muted-foreground mb-1 mx-1 capitalize font-medium">
-                  {msg.sender_name} • {msg.sender_role}
-                </span>
-                <div className={`p-3 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted text-foreground rounded-bl-sm'}`}>
-                  {msg.text}
-                </div>
-              </div>
-            );
-          })
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {error&&<div className="px-3 pt-2 text-xs text-red-500">{error}</div>}<form onSubmit={handleSend} className="p-3 border-t border-border bg-muted/20 flex gap-2 rounded-b-xl">
-        <input 
-          type="text" 
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type a message..." 
-          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
-        />
-        <button 
-          type="submit" 
-          disabled={!newMessage.trim()} 
-          className="bg-primary text-white p-2 rounded-lg hover:bg-primary-light transition-colors disabled:opacity-50 flex items-center justify-center"
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </form>
+  return <div className="flex flex-col h-[500px] bg-background border border-border rounded-xl shadow-2xl relative">
+    <div className="flex justify-between items-center p-4 border-b border-border bg-muted/50 rounded-t-xl">
+      <h3 className="font-bold flex items-center gap-2 text-sm uppercase tracking-wider">Chat with Project Writer</h3>
+      <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"><X className="w-4 h-4" /></button>
     </div>
-  );
+    <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+      {messages.length === 0 ? <div className="text-center text-muted-foreground my-auto text-sm">No messages yet. Start the conversation!</div> : messages.map(msg => {
+        const isMe = msg.sender_id === user?.id;
+        return <div key={msg.id} className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+          <span className="text-[10px] text-muted-foreground mb-1 mx-1 capitalize font-medium">{msg.sender_name} • {msg.sender_role}</span>
+          <div className={`p-3 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted text-foreground rounded-bl-sm'}`}>{msg.text}</div>
+        </div>;
+      })}
+      <div ref={messagesEndRef} />
+    </div>
+    {error && <div className="px-3 pt-2 text-xs text-red-500">{error}</div>}
+    <form onSubmit={handleSend} className="p-3 border-t border-border bg-muted/20 flex gap-2 rounded-b-xl">
+      <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
+      <button type="submit" disabled={!newMessage.trim()} className="bg-primary text-white p-2 rounded-lg hover:bg-primary-light transition-colors disabled:opacity-50 flex items-center justify-center"><Send className="w-4 h-4" /></button>
+    </form>
+  </div>;
 }
